@@ -32,7 +32,7 @@ const LEVEL_RULES = [
   { icon: '⬇️', text: '日本語訳が上から落ちてくる — タップで回答！' },
   { icon: '✅', text: '正解すると次の問題がすぐ出現' },
   { icon: '🔥', text: '連続正解でコンボボーナス獲得！' },
-  { icon: '⏱️', text: '50秒間でどれだけ正解できるか？' },
+  { icon: '⏱️', text: '30秒間でどれだけ正解できるか？' },
 ];
 
 export default function LevelSelect({ onSelect, xp, currentRank, weakCount, currentPlayer, onChangePlayer, useHiragana, setUseHiragana }) {

@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { buildWordCards, buildWeakWordCards, LEVEL_INFO } from './wordData';
 import { loadStats, recordResult, addXP } from './useWordStats';
 
-const GAME_DURATION = 50;
+const GAME_DURATION = 30;
 const FALL_SPEED = 1.1;
 const CHOICE_GAP = 70;
 const DANGER_Y = 0.82; // fraction of area height
