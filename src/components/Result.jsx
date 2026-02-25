@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { LEVEL_INFO } from './wordData';
-import { getCurrentRank, getNextRank } from './useWordStats';
+import { LEVEL_INFO } from '../data/wordData';
+import { getCurrentRank, getNextRank } from '../hooks/useWordStats';
 
 const RANKS = [
   { rank: 'S', minScore: 3000, msg: '👑 天才！！', color: '#FFD700' },
@@ -14,16 +14,14 @@ function getRank(score) {
   return RANKS.find(r => score >= r.minScore) || RANKS[RANKS.length - 1];
 }
 
-export default function Result({ data, levelKey, onRetry, onMenu, xp, rank, currentPlayer }) {
+export default function Result({ data, levelKey, levelInfo, onRetry, onReLearn, onReFlash, onMenu, xp, rank }) {
   const { score, maxCombo, correctCount, wrongCount, missCount, earnedXP } = data;
   const gameRank = getRank(score);
   const accuracy = correctCount + wrongCount > 0
     ? Math.round((correctCount / (correctCount + wrongCount)) * 100)
     : 0;
 
-  const levelInfo = levelKey === 'weak'
-    ? { name: '苦手単語', icon: '🔴', color: '#FF6B6B' }
-    : LEVEL_INFO[levelKey] || {};
+  // levelInfo passed as prop
 
   const [showStats, setShowStats] = useState(false);
   const [showXP, setShowXP] = useState(false);
@@ -70,30 +68,6 @@ export default function Result({ data, levelKey, onRetry, onMenu, xp, rank, curr
       ))}
 
       <div style={{ position: 'relative', zIndex: 1, width: '100%', maxWidth: 420, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
-
-        {/* Player badge */}
-        {currentPlayer && (
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 10,
-            background: 'white',
-            padding: '8px 14px',
-            borderRadius: 16,
-            boxShadow: '0 3px 12px rgba(0,0,0,0.1)',
-            marginBottom: 8
-          }}>
-            <div style={{ fontSize: 28 }}>{currentPlayer.avatar.icon}</div>
-            <div>
-              <div style={{ fontSize: 14, fontWeight: 800, color: '#333' }}>
-                {currentPlayer.name}
-              </div>
-              <div style={{ fontSize: 11, color: '#666' }}>
-                レベル {Math.floor(xp / 500) + 1}
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* Level badge */}
         <div style={{ fontSize: 13, color: levelInfo.color, fontWeight: 700, background: 'white', borderRadius: 20, padding: '5px 14px', boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}>
@@ -168,13 +142,23 @@ export default function Result({ data, levelKey, onRetry, onMenu, xp, rank, curr
         )}
 
         {/* Buttons */}
-        <div style={{ display: 'flex', gap: 12, width: '100%', marginTop: 8 }}>
-          <button onClick={onMenu} style={{ flex: 1, padding: '14px', borderRadius: 16, border: '2px solid #E5E7EB', background: 'white', fontSize: 15, fontWeight: 800, color: '#555', cursor: 'pointer' }}>
-            ← 戻る
-          </button>
-          <button onClick={onRetry} style={{ flex: 1.5, padding: '14px', borderRadius: 16, border: 'none', background: 'linear-gradient(135deg, #FF6B9D, #A78BFA)', color: 'white', fontSize: 16, fontWeight: 800, cursor: 'pointer', boxShadow: '0 4px 16px rgba(255,107,157,0.4)' }}>
-            🔄 リトライ
-          </button>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, width: '100%', marginTop: 8 }}>
+          <div style={{ display: 'flex', gap: 10 }}>
+            <button onClick={onReFlash} style={{ flex: 1, padding: '13px', borderRadius: 16, border: 'none', background: 'linear-gradient(135deg, #0a0a0a, #1a2a28)', color: '#00d4aa', fontSize: 14, fontWeight: 800, cursor: 'pointer' }}>
+              ⚡ 再学習
+            </button>
+            <button onClick={onReLearn} style={{ flex: 1, padding: '13px', borderRadius: 16, border: '2px solid #E5E7EB', background: 'white', fontSize: 14, fontWeight: 800, color: '#555', cursor: 'pointer' }}>
+              📋 単語確認
+            </button>
+          </div>
+          <div style={{ display: 'flex', gap: 10 }}>
+            <button onClick={onMenu} style={{ flex: 1, padding: '13px', borderRadius: 16, border: '2px solid #E5E7EB', background: 'white', fontSize: 14, fontWeight: 800, color: '#888', cursor: 'pointer' }}>
+              🏠 メニュー
+            </button>
+            <button onClick={onRetry} style={{ flex: 1.5, padding: '13px', borderRadius: 16, border: 'none', background: 'linear-gradient(135deg, #FF6B9D, #A78BFA)', color: 'white', fontSize: 15, fontWeight: 800, cursor: 'pointer', boxShadow: '0 4px 16px rgba(255,107,157,0.4)' }}>
+              🔄 リトライ
+            </button>
+          </div>
         </div>
       </div>
     </div>

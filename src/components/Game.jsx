@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { buildWordCards, buildWeakWordCards, LEVEL_INFO } from './wordData';
-import { loadStats, recordResult, addXP } from './useWordStats';
+import { LEVEL_INFO } from '../data/wordData';
+import { recordResult, addXP } from '../hooks/useWordStats';
 
 const GAME_DURATION = 30;
 const FALL_SPEED = 1.1;
@@ -23,7 +23,7 @@ function shuffle(arr) {
 
 const CONFETTI_COLORS = ['#FF6B9D', '#FFE66D', '#4ECDC4', '#A78BFA', '#FF8A5C', '#45B7D1'];
 
-export default function Game({ levelKey, onEnd, onBack, currentPlayer, useHiragana = false }) {
+export default function Game({ session, levelKey, onEnd }) {
   const [phase, setPhase] = useState('playing');
   const [score, setScore] = useState(0);
   const [combo, setCombo] = useState(0);
@@ -53,38 +53,24 @@ export default function Game({ levelKey, onEnd, onBack, currentPlayer, useHiraga
 
   // Word pool
   const poolRef = useRef([]);
-  const usedIndicesRef = useRef([]);
 
   useEffect(() => { scoreRef.current = score; }, [score]);
   useEffect(() => { comboRef.current = combo; }, [combo]);
 
-  const buildPool = useCallback(() => {
-    if (levelKey === 'weak') {
-      const stats = loadStats();
-      return buildWeakWordCards(stats, useHiragana);
-    }
-    return buildWordCards(levelKey, useHiragana);
-  }, [levelKey, useHiragana]);
-
   const getNextWord = useCallback((excludeEnglish = null) => {
     if (!poolRef.current.length) {
-      poolRef.current = shuffle(buildPool());
-      usedIndicesRef.current = [];
+      poolRef.current = shuffle([...session]);
     }
     let attempts = 0;
     while (attempts < poolRef.current.length) {
       if (!poolRef.current.length) break;
       const word = poolRef.current.shift();
-      if (word.english !== excludeEnglish) {
-        return word;
-      } else {
-        poolRef.current.push(word); // put back at end
-      }
+      if (word.english !== excludeEnglish) return word;
+      poolRef.current.push(word);
       attempts++;
     }
-    // fallback
-    return poolRef.current.shift() || buildPool()[0];
-  }, [buildPool]);
+    return poolRef.current.shift() || session[0];
+  }, [session]);
 
   const spawnLane = useCallback((laneIndex, excludeEnglish = null) => {
     const word = getNextWord(excludeEnglish);
@@ -119,7 +105,7 @@ export default function Game({ levelKey, onEnd, onBack, currentPlayer, useHiraga
 
   // Init
   useEffect(() => {
-    poolRef.current = shuffle(buildPool());
+    poolRef.current = shuffle([...session]);
     spawnLane(0, null);
     setTimeout(() => spawnLane(1, null), 200);
     // Timer
@@ -243,10 +229,10 @@ export default function Game({ levelKey, onEnd, onBack, currentPlayer, useHiraga
       // Record
       recordResult(word.english, true);
 
-      // Calc score
+      const areaH = areaRef.current?.clientHeight || 500;
+      const speedBonus = Math.max(0, Math.floor((1 - y / areaH) * 60));
       const newCombo = comboRef.current + 1;
-      const comboBonus = Math.min(10, newCombo - 1) * 20;
-      const speedBonus = Math.max(0, Math.floor((500 - y) / 10));
+      const comboBonus = newCombo >= 7 ? 40 : newCombo >= 5 ? 25 : newCombo >= 3 ? 10 : 0;
       const gained = 100 + speedBonus + comboBonus;
 
       comboRef.current = newCombo;
@@ -313,48 +299,6 @@ export default function Game({ levelKey, onEnd, onBack, currentPlayer, useHiraga
     >
       {/* HUD */}
       <div style={{ padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.9)', backdropFilter: 'blur(10px)', boxShadow: '0 2px 10px rgba(0,0,0,0.08)', zIndex: 10 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          {currentPlayer && (
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 6,
-              background: 'rgba(255,255,255,0.3)',
-              padding: '6px 10px',
-              borderRadius: 10,
-            }}>
-              <div style={{ fontSize: 20 }}>{currentPlayer.avatar.icon}</div>
-              <div style={{ fontSize: 12, fontWeight: 700, color: '#333' }}>
-                {currentPlayer.name}
-              </div>
-            </div>
-          )}
-          <button
-            onClick={onBack}
-            style={{
-              padding: '8px 12px',
-              background: 'linear-gradient(135deg, #FF6B6B, #FFB347)',
-              border: 'none',
-              borderRadius: '12px',
-              color: 'white',
-              fontWeight: 700,
-              fontSize: 14,
-              cursor: 'pointer',
-              boxShadow: '0 2px 8px rgba(255,107,107,0.3)',
-              transition: 'all 0.2s ease',
-            }}
-            onMouseEnter={e => {
-              e.target.style.transform = 'scale(1.05)';
-              e.target.style.boxShadow = '0 4px 12px rgba(255,107,107,0.4)';
-            }}
-            onMouseLeave={e => {
-              e.target.style.transform = 'scale(1)';
-              e.target.style.boxShadow = '0 2px 8px rgba(255,107,107,0.3)';
-            }}
-          >
-            ← 戻る
-          </button>
-        </div>
         <div style={{ textAlign: 'center' }}>
           <div style={{ fontSize: 11, color: '#aaa', fontWeight: 700 }}>💎 SCORE</div>
           <div style={{ fontSize: 20, fontWeight: 800, color: '#333', fontFamily: 'Fredoka One' }}>{score.toLocaleString()}</div>
@@ -364,26 +308,29 @@ export default function Game({ levelKey, onEnd, onBack, currentPlayer, useHiraga
           <div style={{ fontSize: 20, fontWeight: 800, color: combo >= 5 ? '#FFD700' : '#333', fontFamily: 'Fredoka One',
             animation: combo >= 3 ? 'pulse 0.6s ease infinite' : 'none' }}>{combo}</div>
         </div>
-        <div style={{
-          textAlign: 'center',
-          padding: '8px 14px',
-          background: timeLeft <= 10 ? 'rgba(255,107,107,0.2)' : 'rgba(255,255,255,0.3)',
-          borderRadius: 12,
-          animation: timeLeft <= 10 ? 'timerFlash 1s ease infinite' : 'none',
-        }}>
-          <div style={{ fontSize: 11, color: timeLeft <= 10 ? '#FF6B6B' : '#aaa', fontWeight: 700 }}>⏱️ TIME</div>
-          <div style={{ fontSize: 20, fontWeight: 800, color: timeLeft <= 10 ? '#FF6B6B' : '#333', fontFamily: 'Fredoka One' }}>{timeLeft}</div>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ fontSize: 11, color: '#aaa', fontWeight: 700 }}>⏱️ TIME</div>
+          <div style={{ fontSize: 20, fontWeight: 800, color: timeLeft <= 10 ? '#FF6B6B' : '#333', fontFamily: 'Fredoka One',
+            animation: timeLeft <= 10 ? 'pulse 0.5s ease infinite' : 'none' }}>{timeLeft}</div>
+        </div>
+        <div style={{ fontSize: 13, color: levelInfo.color || '#999', fontWeight: 700 }}>
+          {levelInfo.icon} {levelInfo.name}
         </div>
       </div>
 
-      {/* Level / Word display */}
-      <div style={{ display: 'flex', padding: '10px 16px', background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(8px)', boxShadow: '0 1px 6px rgba(0,0,0,0.05)' }}>
+      {/* Timer bar */}
+      <div style={{ width: '100%', height: 5, background: '#F0F0F0' }}>
+        <div style={{ height: '100%', width: `${(timeLeft / GAME_DURATION) * 100}%`, background: timeLeft <= 10 ? '#FF6B6B' : 'linear-gradient(90deg, #4ECDC4, #45B7D1)', transition: 'width 0.9s linear, background 0.5s' }} />
+      </div>
+
+      {/* Lane headers */}
+      <div style={{ display: 'flex', borderBottom: '2px solid rgba(0,0,0,0.06)' }}>
         {[0, 1].map(i => (
-          <div key={i} style={{ flex: 1, textAlign: 'center' }}>
-            <div style={{ fontSize: 10, color: '#aaa', fontWeight: 700, marginBottom: 2 }}>
-              {levelInfo.icon} {levelInfo.name} - Lane {i + 1}
+          <div key={i} style={{ flex: 1, padding: '10px 12px', background: i === 0 ? 'rgba(255,107,157,0.08)' : 'rgba(69,183,209,0.08)', borderRight: i === 0 ? '2px solid rgba(0,0,0,0.06)' : 'none', textAlign: 'center' }}>
+            <div style={{ fontSize: 11, color: i === 0 ? '#FF6B9D' : '#45B7D1', fontWeight: 700, marginBottom: 2 }}>
+              {i === 0 ? '👈 LEFT' : 'RIGHT 👉'}
             </div>
-            <div style={{ fontSize: 18, fontWeight: 800, color: '#333', letterSpacing: 1 }}>
+            <div style={{ fontFamily: 'Fredoka One', fontSize: 20, color: '#333', minHeight: 28 }}>
               {lanes[i]?.english || '...'}
             </div>
           </div>
@@ -391,10 +338,10 @@ export default function Game({ levelKey, onEnd, onBack, currentPlayer, useHiraga
       </div>
 
       {/* Game area */}
-      <div ref={areaRef} style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
-        {/* Danger zone */}
-        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: `${(1 - DANGER_Y) * 100}%`, background: 'rgba(255,107,107,0.06)', borderTop: '2px dashed rgba(255,107,107,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none', zIndex: 5 }}>
-          <span style={{ fontSize: 12, color: 'rgba(255,107,107,0.6)', fontWeight: 700 }}>⚠️ DANGER ZONE ⚠️</span>
+      <div ref={areaRef} style={{ flex: 1, position: 'relative', overflow: 'hidden', paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
+        {/* Danger zone - just a line, no background so buttons stay visible */}
+        <div style={{ position: 'absolute', left: 0, right: 0, top: `${DANGER_Y * 100}%`, borderTop: '2px dashed rgba(255,107,107,0.5)', pointerEvents: 'none', zIndex: 5 }}>
+          <span style={{ fontSize: 10, color: 'rgba(255,107,107,0.7)', fontWeight: 700, paddingLeft: 8 }}>⚠️ DANGER</span>
         </div>
 
         {/* Lane divider */}
@@ -420,9 +367,11 @@ export default function Game({ levelKey, onEnd, onBack, currentPlayer, useHiraga
               fontSize: 15,
               opacity: c.opacity,
               cursor: 'pointer',
-              boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+              boxShadow: '0 4px 16px rgba(0,0,0,0.28), 0 0 0 2px rgba(255,255,255,0.5)',
               transition: 'opacity 0.25s ease',
               zIndex: 10,
+              minHeight: 44,
+              textShadow: '0 1px 3px rgba(0,0,0,0.3)',
             }}
           >
             {c.text}
@@ -471,17 +420,26 @@ export default function Game({ levelKey, onEnd, onBack, currentPlayer, useHiraga
 }
 
 function ConfettiBurst({ x, y }) {
+  const particles = Array.from({ length: 10 }, (_, i) => ({
+    angle: (i / 10) * Math.PI * 2 + Math.random() * 0.5,
+    color: CONFETTI_COLORS[Math.floor(Math.random() * CONFETTI_COLORS.length)],
+    size: 4 + Math.random() * 4,
+    rotation: Math.random() * 360,
+    anim: i % 4,
+  }));
+
   return (
-    <div style={{ position: 'absolute', left: x, top: y, pointerEvents: 'none', zIndex: 25 }}>
-      {[0, 1, 2, 3].map(i => (
+    <>
+      {particles.map((p, i) => (
         <div key={i} style={{
-          position: 'absolute',
-          width: 8, height: 8,
-          background: CONFETTI_COLORS[Math.floor(Math.random() * CONFETTI_COLORS.length)],
-          borderRadius: '50%',
-          animation: `confetti${i} 0.8s ease-out forwards`,
+          position: 'absolute', left: x, top: y,
+          width: p.size, height: p.size * 0.6,
+          background: p.color, borderRadius: 2,
+          transform: `rotate(${p.rotation}deg)`,
+          animation: `confetti${p.anim} 0.7s ease-out forwards`,
+          pointerEvents: 'none', zIndex: 40,
         }} />
       ))}
-    </div>
+    </>
   );
 }

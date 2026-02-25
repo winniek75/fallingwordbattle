@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
 import PlayerSelect from './PlayerSelect';
-import LevelSelect from './LevelSelect';
-import Game from './Game';
-import Result from './Result';
-import { LEVEL_INFO } from './wordData';
-import { loadPlayerLevel, savePlayerLevel, loadXP, getCurrentRank, getWeakWordCount, setCurrentPlayer } from './useWordStats';
+import LevelSelect from './components/LevelSelect';
+import PreGame from './components/PreGame';
+import FlashInput from './components/FlashInput';
+import Game from './components/Game';
+import Result from './components/Result';
+import { LEVEL_INFO, buildSession, buildWeakSession } from './data/wordData';
+import { loadPlayerLevel, savePlayerLevel, loadXP, getCurrentRank, getWeakWordCount, loadStats, setCurrentPlayer } from './hooks/useWordStats';
 
-// CSS keyframes injected globally
 const GLOBAL_STYLES = `
   @keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-15px)} }
   @keyframes shake { 0%,100%{transform:translateX(0)} 20%,60%{transform:translateX(-6px)} 40%,80%{transform:translateX(6px)} }
@@ -19,8 +20,6 @@ const GLOBAL_STYLES = `
   @keyframes confetti3 { to{transform:translate(-80px,40px) rotate(-360deg);opacity:0} }
   @keyframes pulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.08)} }
   @keyframes comboIn { 0%{opacity:0;transform:scale(0.6)} 60%{transform:scale(1.1)} 100%{opacity:1;transform:scale(1)} }
-  @keyframes missAnim { 0%{opacity:1;transform:translateY(0)} 100%{opacity:0;transform:translateY(-30px)} }
-  @keyframes timerFlash { 0%,100%{background:rgba(255,107,107,0.3)} 50%{background:rgba(255,107,107,0.7)} }
 `;
 
 function injectGlobalStyles() {
@@ -32,11 +31,12 @@ function injectGlobalStyles() {
 }
 
 export default function App() {
-  const [phase, setPhase] = useState('playerSelect'); // playerSelect | levelSelect | playing | result
-  const [selectedLevel, setSelectedLevel] = useState(null); // levelKey or 'weak'
+  const [phase, setPhase] = useState('playerSelect');
+  const [selectedLevel, setSelectedLevel] = useState(null);
+  const [session, setSession] = useState([]);
   const [resultData, setResultData] = useState(null);
-  const [currentPlayer, setCurrentPlayerState] = useState(null);
   const [xp, setXp] = useState(0);
+  const [currentPlayer, setCurrentPlayerState] = useState(null);
   const [useHiragana, setUseHiragana] = useState(false);
 
   useEffect(() => {
@@ -49,6 +49,7 @@ export default function App() {
         setCurrentPlayerState(player);
         setCurrentPlayer(player.id);
         setXp(player.stats?.xp || 0);
+        setPhase('levelSelect');
       }
     }
   }, []);
@@ -64,20 +65,19 @@ export default function App() {
     setPhase('levelSelect');
   };
 
+  const handleChangePlayer = () => {
+    setPhase('playerSelect');
+  };
+
   const handleLevelSelect = (levelKey) => {
+    const words = levelKey === 'weak'
+      ? buildWeakSession(loadStats(), 12)
+      : buildSession(levelKey, 12, useHiragana);
+    if (!words.length) return;
     setSelectedLevel(levelKey);
+    setSession(words);
     if (levelKey !== 'weak') savePlayerLevel(levelKey);
-    setPhase('playing');
-  };
-
-  const handleGameEnd = (data) => {
-    setResultData(data);
-    setXp(loadXP());
-    setPhase('result');
-  };
-
-  const handleRetry = () => {
-    setPhase('playing');
+    setPhase('preGame');
   };
 
   const handleBackToMenu = () => {
@@ -85,9 +85,9 @@ export default function App() {
     setPhase('levelSelect');
   };
 
-  const handleChangePlayer = () => {
-    setPhase('playerSelect');
-  };
+  const levelInfo = selectedLevel === 'weak'
+    ? { key: 'weak', name: '苦手単語', icon: '🔴', color: '#FF6B6B' }
+    : LEVEL_INFO[selectedLevel] || {};
 
   return (
     <div style={{ width: '100vw', height: '100dvh', overflow: 'hidden', position: 'relative' }}>
@@ -109,10 +109,27 @@ export default function App() {
           setUseHiragana={setUseHiragana}
         />
       )}
-      {phase === 'playing' && (
+      {phase === 'preGame' && (
+        <PreGame
+          words={session}
+          levelInfo={levelInfo}
+          onStartFlash={() => setPhase('flashInput')}
+          onStartBattle={() => setPhase('game')}
+          onBack={() => setPhase('levelSelect')}
+        />
+      )}
+      {phase === 'flashInput' && (
+        <FlashInput
+          words={session}
+          onComplete={() => setPhase('game')}
+          onSkip={() => setPhase('game')}
+        />
+      )}
+      {phase === 'game' && (
         <Game
+          session={session}
           levelKey={selectedLevel}
-          onEnd={handleGameEnd}
+          onEnd={(data) => { setResultData(data); setXp(loadXP()); setPhase('result'); }}
           onBack={handleBackToMenu}
           currentPlayer={currentPlayer}
           useHiragana={useHiragana}
@@ -122,11 +139,13 @@ export default function App() {
         <Result
           data={resultData}
           levelKey={selectedLevel}
-          onRetry={handleRetry}
+          levelInfo={levelInfo}
+          onRetry={() => setPhase('game')}
+          onReLearn={() => setPhase('preGame')}
+          onReFlash={() => setPhase('flashInput')}
           onMenu={handleBackToMenu}
           xp={xp}
           rank={getCurrentRank(xp)}
-          currentPlayer={currentPlayer}
         />
       )}
     </div>

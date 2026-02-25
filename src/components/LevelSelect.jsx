@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { LEVEL_INFO } from './wordData';
-import { getCurrentRank, getNextRank, loadXP, XP_RANKS } from './useWordStats';
+import { LEVEL_INFO } from '../data/wordData';
+import { getCurrentRank, getNextRank, loadXP, XP_RANKS } from '../hooks/useWordStats';
 
 const BG = 'linear-gradient(135deg, #FFF5F7 0%, #F5F0FF 35%, #F0F8FF 70%, #F0FFF4 100%)';
 
@@ -76,7 +76,7 @@ export default function LevelSelect({ onSelect, xp, currentRank, weakCount, curr
             e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)';
           }}
           >
-            <div style={{ fontSize: 24 }}>{currentPlayer.avatar.icon}</div>
+            <div style={{ fontSize: 24 }}>{currentPlayer.avatar?.icon || '😊'}</div>
             <div>
               <div style={{ fontSize: 12, fontWeight: 700, color: '#333' }}>
                 {currentPlayer.name}
@@ -175,7 +175,7 @@ export default function LevelSelect({ onSelect, xp, currentRank, weakCount, curr
                 <div style={{ textAlign: 'left', flex: 1 }}>
                   <div style={{ fontWeight: 800, fontSize: 16, color: hoveredLevel === key ? 'white' : '#333' }}>{info.name}</div>
                   <div style={{ fontSize: 12, color: hoveredLevel === key ? 'rgba(255,255,255,0.85)' : '#999' }}>
-                    {info.level}  ·  CEFR {info.cefr}
+                    {info.level}  ·  CEFR {info.cefr}  ·  {info.wordCount}語
                   </div>
                 </div>
                 <div style={{ fontSize: 18, color: hoveredLevel === key ? 'white' : '#ccc' }}>›</div>
