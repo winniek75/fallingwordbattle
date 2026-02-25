@@ -6,7 +6,7 @@ import FlashInput from './components/FlashInput';
 import Game from './components/Game';
 import Result from './components/Result';
 import { LEVEL_INFO, buildSession, buildWeakSession } from './data/wordData';
-import { loadPlayerLevel, savePlayerLevel, loadXP, getCurrentRank, getWeakWordCount, loadStats, setCurrentPlayer } from './hooks/useWordStats';
+import { loadPlayerLevel, savePlayerLevel, loadXP, getCurrentRank, getWeakWordCount, loadStats } from './hooks/useWordStats';
 
 const GLOBAL_STYLES = `
   @keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-15px)} }
@@ -47,7 +47,7 @@ export default function App() {
       const player = players.find(p => p.id === savedPlayerId);
       if (player) {
         setCurrentPlayerState(player);
-        setCurrentPlayer(player.id);
+        localStorage.setItem('fwb_current_player', player.id);
         setXp(player.stats?.xp || 0);
         setPhase('levelSelect');
       }
@@ -56,7 +56,7 @@ export default function App() {
 
   const handleSelectPlayer = (player) => {
     setCurrentPlayerState(player);
-    setCurrentPlayer(player.id);
+    localStorage.setItem('fwb_current_player', player.id);
     setXp(player.stats?.xp || 0);
   };
 
