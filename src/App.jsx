@@ -123,6 +123,7 @@ export default function App() {
           words={session}
           onComplete={() => setPhase('game')}
           onSkip={() => setPhase('game')}
+          onBack={() => setPhase('preGame')}
         />
       )}
       {phase === 'game' && (
