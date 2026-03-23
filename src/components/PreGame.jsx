@@ -39,6 +39,19 @@ export default function PreGame({ words, levelInfo, onStartFlash, onStartBattle,
     setCardIdx(i => Math.max(0, i - 1));
   };
 
+  // Inject responsive styles once
+  useEffect(() => {
+    if (!document.getElementById('pregame-responsive')) {
+      const style = document.createElement('style');
+      style.id = 'pregame-responsive';
+      style.textContent = `
+        .pregame-grid { display: grid; grid-template-columns: minmax(0, 420px) minmax(0, 1fr); gap: 24px; align-items: start; }
+        @media (max-width: 700px) { .pregame-grid { grid-template-columns: 1fr; } }
+      `;
+      document.head.appendChild(style);
+    }
+  }, []);
+
   return (
     <div style={{
       width: '100%', height: '100%',
@@ -67,14 +80,10 @@ export default function PreGame({ words, levelInfo, onStartFlash, onStartBattle,
         padding: '12px 16px 0',
         display: 'flex', justifyContent: 'center',
       }}>
-        <div style={{
-          width: '100%', maxWidth: 900,
-          display: 'flex', flexWrap: 'wrap', gap: 20,
-          alignContent: 'flex-start',
-        }}>
+        <div className="pregame-grid" style={{ width: '100%', maxWidth: 900 }}>
 
           {/* Left column: Card + Nav */}
-          <div style={{ flex: '1 1 380px', minWidth: 0, maxWidth: 460 }}>
+          <div>
             {/* Progress dots */}
             <div style={{ display: 'flex', gap: 5, marginBottom: 14, flexWrap: 'wrap', justifyContent: 'center' }}>
               {words.map((_, i) => (
@@ -168,7 +177,7 @@ export default function PreGame({ words, levelInfo, onStartFlash, onStartBattle,
           </div>
 
           {/* Right column: Word list */}
-          <div style={{ flex: '1 1 300px', minWidth: 0 }}>
+          <div style={{ minWidth: 0 }}>
             <div style={{ fontSize: 12, fontWeight: 700, color: '#bbb', letterSpacing: 1, marginBottom: 10 }}>今回の出題単語 ({words.length}語)</div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 8 }}>
               {words.map((w, i) => (
