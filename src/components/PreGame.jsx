@@ -1,13 +1,30 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { speak } from '../utils/speak';
 
 // Quick swipe-through word card preview before the battle
 export default function PreGame({ words, levelInfo, onStartFlash, onStartBattle, onBack }) {
   const [cardIdx, setCardIdx] = useState(0);
   const [flipped, setFlipped] = useState(false);
   const [allSeen, setAllSeen] = useState(false);
+  const initialSpoken = useRef(false);
 
   const word = words[cardIdx];
   const isLast = cardIdx === words.length - 1;
+
+  // 最初のカード表示時に音声を再生
+  useEffect(() => {
+    if (!initialSpoken.current) {
+      initialSpoken.current = true;
+      setTimeout(() => speak(words[0].english), 300);
+    }
+  }, []);
+
+  // カードが切り替わった時（表面=英語表示）に音声を再生
+  useEffect(() => {
+    if (!flipped) {
+      speak(word.english);
+    }
+  }, [cardIdx]);
 
   const next = () => {
     setFlipped(false);
@@ -45,7 +62,7 @@ export default function PreGame({ words, levelInfo, onStartFlash, onStartBattle,
       {/* Progress dots */}
       <div style={{ display: 'flex', gap: 5, marginBottom: 16, flexWrap: 'wrap', justifyContent: 'center', maxWidth: 420 }}>
         {words.map((_, i) => (
-          <div key={i} onClick={() => { setCardIdx(i); setFlipped(false); }} style={{
+          <div key={i} onClick={() => { setCardIdx(i); setFlipped(false); speak(words[i].english); }} style={{
             width: 10, height: 10, borderRadius: '50%', cursor: 'pointer',
             background: i < cardIdx ? (levelInfo.color || '#4ECDC4') : i === cardIdx ? '#333' : '#ddd',
             transform: i === cardIdx ? 'scale(1.3)' : 'scale(1)',
@@ -56,7 +73,12 @@ export default function PreGame({ words, levelInfo, onStartFlash, onStartBattle,
 
       {/* Card */}
       <div
-        onClick={() => setFlipped(f => !f)}
+        onClick={() => {
+          const willFlip = !flipped;
+          setFlipped(willFlip);
+          // 裏面→表面に戻る時に英語音声を再生
+          if (!willFlip) speak(word.english);
+        }}
         style={{
           width: '100%', maxWidth: 420, borderRadius: 24,
           minHeight: 260,
@@ -135,7 +157,7 @@ export default function PreGame({ words, levelInfo, onStartFlash, onStartBattle,
         <div style={{ fontSize: 12, fontWeight: 700, color: '#bbb', letterSpacing: 1, marginBottom: 10 }}>今回の出題単語 ({words.length}語)</div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
           {words.map((w, i) => (
-            <div key={i} onClick={() => { setCardIdx(i); setFlipped(false); window.scrollTo(0,0); }} style={{
+            <div key={i} onClick={() => { setCardIdx(i); setFlipped(false); speak(words[i].english); window.scrollTo(0,0); }} style={{
               background: 'white', borderRadius: 12, padding: '10px 12px',
               boxShadow: '0 2px 8px rgba(0,0,0,0.07)', cursor: 'pointer',
               display: 'flex', gap: 8, alignItems: 'center',
