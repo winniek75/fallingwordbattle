@@ -177,32 +177,39 @@ export default function PreGame({ words, levelInfo, onStartFlash, onStartBattle,
         </div>
       </div>
 
-      {/* Action buttons - always visible */}
-      <div style={{ width: '100%', maxWidth: 420, marginTop: 20, display: 'flex', flexDirection: 'column', gap: 10 }}>
+      {/* Spacer for fixed footer */}
+      <div style={{ height: 140 }} />
+
+      {/* Action buttons - fixed at bottom */}
+      <div style={{
+        position: 'fixed', bottom: 0, left: 0, right: 0,
+        background: 'linear-gradient(transparent, rgba(245,240,255,0.95) 20%, rgba(245,240,255,1) 40%)',
+        padding: '24px 16px 20px',
+        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8,
+        zIndex: 20,
+      }}>
         <button onClick={onStartFlash} style={{
-          width: '100%', padding: '16px', borderRadius: 18, border: 'none',
+          width: '100%', maxWidth: 420, padding: '14px', borderRadius: 18, border: 'none',
           background: 'linear-gradient(135deg, #0a0a0a, #1a2a28)',
-          color: '#00d4aa', fontSize: 16, fontWeight: 800, cursor: 'pointer',
+          color: '#00d4aa', fontSize: 15, fontWeight: 800, cursor: 'pointer',
           boxShadow: '0 4px 20px rgba(0,212,170,0.25)',
           display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
         }}>
-          <span style={{ fontSize: 20 }}>⚡</span>
+          <span style={{ fontSize: 18 }}>⚡</span>
           FlashInput で記憶に焼き付ける
-          <span style={{ fontSize: 12, opacity: 0.7, fontFamily: 'monospace' }}>5-phase</span>
+          <span style={{ fontSize: 11, opacity: 0.7, fontFamily: 'monospace' }}>5-phase</span>
         </button>
         <button onClick={onStartBattle} style={{
-          width: '100%', padding: '16px', borderRadius: 18, border: 'none',
+          width: '100%', maxWidth: 420, padding: '14px', borderRadius: 18, border: 'none',
           background: 'linear-gradient(135deg, #FF6B9D, #A78BFA)',
-          color: 'white', fontSize: 16, fontWeight: 800, cursor: 'pointer',
+          color: 'white', fontSize: 15, fontWeight: 800, cursor: 'pointer',
           boxShadow: '0 4px 20px rgba(255,107,157,0.4)',
           display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
         }}>
-          <span style={{ fontSize: 20 }}>⚔️</span>
+          <span style={{ fontSize: 18 }}>⚔️</span>
           そのままバトルへ！
         </button>
       </div>
-
-      <div style={{ height: 32 }} />
     </div>
   );
 }
