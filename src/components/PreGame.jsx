@@ -62,7 +62,7 @@ export default function PreGame({ words, levelInfo, onStartFlash, onStartBattle,
           if (!willFlip) speak(word.english);
         }}
         style={{
-          width: '100%', borderRadius: 24, minHeight: 220,
+          width: '100%', borderRadius: 24, minHeight: 220, boxSizing: 'border-box',
           background: flipped ? (levelInfo.color || '#4ECDC4') : 'white',
           boxShadow: flipped
             ? `0 8px 32px ${(levelInfo.color || '#4ECDC4')}50`
@@ -185,15 +185,14 @@ export default function PreGame({ words, levelInfo, onStartFlash, onStartBattle,
         WebkitOverflowScrolling: 'touch',
         padding: '8px 16px 120px',
       }}>
-        <div style={{ maxWidth: 960, margin: '0 auto' }}>
-          {/* Two-column on wide, one-column on narrow — using table-like approach */}
+        <div style={{ maxWidth: 960, margin: '0 auto', boxSizing: 'border-box' }}>
           <div style={{ display: 'flex', gap: 24, alignItems: 'flex-start' }}>
-            {/* Card column — fixed width on wide screens */}
-            <div style={{ width: 400, flexShrink: 0 }}>
+            {/* Card column — 45% width, box-sizing ensures padding is included */}
+            <div style={{ width: '45%', flexShrink: 0, boxSizing: 'border-box' }}>
               {cardSection}
             </div>
-            {/* Word list column — takes remaining space, hidden on narrow */}
-            <div style={{ flex: 1, minWidth: 250 }}>
+            {/* Word list column */}
+            <div style={{ flex: 1, minWidth: 0, boxSizing: 'border-box' }}>
               {wordListSection}
             </div>
           </div>
