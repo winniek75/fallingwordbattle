@@ -178,7 +178,7 @@ export default function PreGame({ words, levelInfo, onStartFlash, onStartBattle,
       </div>
 
       {/* Spacer for fixed footer */}
-      <div style={{ height: 140 }} />
+      <div style={{ height: 180 }} />
 
       {/* Action buttons - fixed at bottom */}
       <div style={{
