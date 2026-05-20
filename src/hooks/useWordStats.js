@@ -1,6 +1,8 @@
-// useWordStats — 苦手単語トラッキング (localStorage)
+// useWordStats — 苦手単語トラッキング & ハイスコア永続化 (localStorage)
 const STORAGE_KEY = 'fwb_word_stats';
 const LEVEL_KEY = 'fwb_player_level';
+const HIGH_SCORE_KEY = 'fwb_high_scores';
+const WRONG_LOG_KEY = 'fwb_wrong_answers_log';
 
 export function loadStats() {
   try {
@@ -79,4 +81,67 @@ export function getNextRank(xp) {
     if (xp < XP_RANKS[i].minXP) return XP_RANKS[i];
   }
   return null;
+}
+
+// ── High Score Persistence ──
+
+export function loadHighScores() {
+  try {
+    return JSON.parse(localStorage.getItem(HIGH_SCORE_KEY) || '{}');
+  } catch {
+    return {};
+  }
+}
+
+export function saveHighScore(levelKey, score) {
+  const scores = loadHighScores();
+  if (!scores[levelKey] || score > scores[levelKey]) {
+    scores[levelKey] = score;
+    localStorage.setItem(HIGH_SCORE_KEY, JSON.stringify(scores));
+    return true; // new high score
+  }
+  return false;
+}
+
+export function getHighScore(levelKey) {
+  const scores = loadHighScores();
+  return scores[levelKey] || 0;
+}
+
+// ── Wrong Answer Log for Review Mode ──
+
+export function loadWrongAnswerLog() {
+  try {
+    return JSON.parse(localStorage.getItem(WRONG_LOG_KEY) || '[]');
+  } catch {
+    return [];
+  }
+}
+
+export function logWrongAnswer(word) {
+  const log = loadWrongAnswerLog();
+  log.push({
+    english: word.english,
+    japanese: word.correct || word.japanese,
+    timestamp: Date.now(),
+    levelKey: word.levelKey || null,
+  });
+  // Keep only the latest 500 entries to avoid localStorage bloat
+  const trimmed = log.slice(-500);
+  localStorage.setItem(WRONG_LOG_KEY, JSON.stringify(trimmed));
+}
+
+export function getWrongAnswerSummary() {
+  const log = loadWrongAnswerLog();
+  const summary = {};
+  for (const entry of log) {
+    if (!summary[entry.english]) {
+      summary[entry.english] = { english: entry.english, japanese: entry.japanese, count: 0, lastWrong: 0 };
+    }
+    summary[entry.english].count += 1;
+    if (entry.timestamp > summary[entry.english].lastWrong) {
+      summary[entry.english].lastWrong = entry.timestamp;
+    }
+  }
+  return Object.values(summary).sort((a, b) => b.count - a.count);
 }

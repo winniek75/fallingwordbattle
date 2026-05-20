@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { LEVEL_INFO } from '../data/wordData';
-import { getCurrentRank, getNextRank } from '../hooks/useWordStats';
+import { getCurrentRank, getNextRank, getHighScore } from '../hooks/useWordStats';
 
 const RANKS = [
   { rank: 'S', minScore: 3000, msg: '👑 天才！！', color: '#FFD700' },
@@ -15,8 +15,9 @@ function getRank(score) {
 }
 
 export default function Result({ data, levelKey, levelInfo, onRetry, onReLearn, onReFlash, onMenu, xp, rank }) {
-  const { score, maxCombo, correctCount, wrongCount, missCount, earnedXP } = data;
+  const { score, maxCombo, correctCount, wrongCount, missCount, earnedXP, isNewHighScore } = data;
   const gameRank = getRank(score);
+  const highScore = getHighScore(levelKey);
   const accuracy = correctCount + wrongCount > 0
     ? Math.round((correctCount / (correctCount + wrongCount)) * 100)
     : 0;
@@ -89,6 +90,16 @@ export default function Result({ data, levelKey, levelInfo, onRetry, onReLearn, 
         <div style={{ background: 'white', borderRadius: 20, padding: '16px 32px', boxShadow: '0 4px 20px rgba(0,0,0,0.1)', textAlign: 'center', width: '100%' }}>
           <div style={{ fontSize: 12, color: '#bbb', fontWeight: 700, letterSpacing: 1 }}>TOTAL SCORE</div>
           <div style={{ fontFamily: 'Fredoka One', fontSize: 44, color: '#333' }}>{score.toLocaleString()}</div>
+          {isNewHighScore && (
+            <div style={{ fontSize: 14, color: '#FFD700', fontWeight: 800, marginTop: 4, animation: 'popIn 0.4s ease' }}>
+              NEW HIGH SCORE!
+            </div>
+          )}
+          {highScore > 0 && (
+            <div style={{ fontSize: 12, color: '#bbb', marginTop: 4 }}>
+              Best: {highScore.toLocaleString()}
+            </div>
+          )}
         </div>
 
         {/* XP Earned */}

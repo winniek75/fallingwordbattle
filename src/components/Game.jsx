@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { LEVEL_INFO } from '../data/wordData';
-import { recordResult, addXP } from '../hooks/useWordStats';
+import { recordResult, addXP, saveHighScore, logWrongAnswer } from '../hooks/useWordStats';
+import { playCorrectSound, playWrongSound } from '../utils/sound';
+import { speak } from '../utils/speak';
 
 const GAME_DURATION = 30;
 const FALL_SPEED = 1.1;
@@ -135,6 +137,9 @@ export default function Game({ session, levelKey, onEnd }) {
     const earnedXP = Math.floor(scoreRef.current * 0.5) + correctRef.current * 10;
     const totalXP = addXP(earnedXP);
 
+    // Save high score to localStorage
+    const isNewHighScore = saveHighScore(levelKey, scoreRef.current);
+
     setTimeout(() => {
       onEnd({
         score: scoreRef.current,
@@ -145,9 +150,10 @@ export default function Game({ session, levelKey, onEnd }) {
         missCount: missRef.current,
         earnedXP,
         totalXP,
+        isNewHighScore,
       });
     }, 200);
-  }, [onEnd]);
+  }, [onEnd, levelKey]);
 
   // Game loop
   useEffect(() => {
@@ -229,6 +235,10 @@ export default function Game({ session, levelKey, onEnd }) {
       // Record
       recordResult(word.english, true);
 
+      // Sound effect + TTS pronunciation
+      playCorrectSound();
+      setTimeout(() => speak(word.english), 350);
+
       const areaH = areaRef.current?.clientHeight || 500;
       const speedBonus = Math.max(0, Math.floor((1 - y / areaH) * 60));
       const newCombo = comboRef.current + 1;
@@ -270,6 +280,12 @@ export default function Game({ session, levelKey, onEnd }) {
     } else {
       // Wrong
       recordResult(word.english, false);
+      logWrongAnswer(word);
+
+      // Sound effect + TTS pronunciation (so they learn the correct word)
+      playWrongSound();
+      setTimeout(() => speak(word.english), 250);
+
       wrongRef.current += 1;
       setWrongCount(w => w + 1);
       comboRef.current = 0;
