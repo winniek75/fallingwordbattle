@@ -20,6 +20,8 @@ const GLOBAL_STYLES = `
   @keyframes confetti3 { to{transform:translate(-80px,40px) rotate(-360deg);opacity:0} }
   @keyframes pulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.08)} }
   @keyframes comboIn { 0%{opacity:0;transform:scale(0.6)} 60%{transform:scale(1.1)} 100%{opacity:1;transform:scale(1)} }
+  @keyframes milestoneIn { 0%{opacity:0;transform:translate(-50%,-50%) scale(0)} 50%{opacity:1;transform:translate(-50%,-50%) scale(1.1)} 70%{transform:translate(-50%,-50%) scale(1)} 100%{opacity:0;transform:translate(-50%,-50%) scale(1)} }
+  @keyframes perfectGlow { 0%,100%{text-shadow:0 0 20px #FFD700, 0 0 40px #FFD700, 0 0 60px #FFD700} 50%{text-shadow:0 0 30px #FFD700, 0 0 60px #FFD700, 0 0 90px #FFD700} }
 `;
 
 function injectGlobalStyles() {
@@ -38,6 +40,7 @@ export default function App() {
   const [xp, setXp] = useState(0);
   const [currentPlayer, setCurrentPlayerState] = useState(null);
   const [useHiragana, setUseHiragana] = useState(false);
+  const [gameMode, setGameMode] = useState('normal'); // 'normal' | 'survival'
 
   useEffect(() => {
     injectGlobalStyles();
@@ -108,6 +111,8 @@ export default function App() {
           onChangePlayer={handleChangePlayer}
           useHiragana={useHiragana}
           setUseHiragana={setUseHiragana}
+          gameMode={gameMode}
+          setGameMode={setGameMode}
         />
       )}
       {phase === 'preGame' && (
@@ -131,6 +136,7 @@ export default function App() {
         <Game
           session={session}
           levelKey={selectedLevel}
+          gameMode={gameMode}
           onEnd={(data) => { setResultData(data); setXp(loadXP()); setPhase('result'); }}
           onBack={handleBackToMenu}
           currentPlayer={currentPlayer}
