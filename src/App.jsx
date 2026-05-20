@@ -41,6 +41,7 @@ export default function App() {
 
   useEffect(() => {
     injectGlobalStyles();
+    if (window.WiseXP) window.WiseXP.init('fallingwordbattle');
     const savedPlayerId = localStorage.getItem('fwb_current_player');
     if (savedPlayerId) {
       const players = JSON.parse(localStorage.getItem('fwb_players') || '[]');

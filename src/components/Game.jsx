@@ -140,6 +140,18 @@ export default function Game({ session, levelKey, onEnd }) {
     // Save high score to localStorage
     const isNewHighScore = saveHighScore(levelKey, scoreRef.current);
 
+    // Report game results to WiseXP
+    const total = correctRef.current + wrongRef.current + missRef.current;
+    const gradeRanks = [
+      { rank: 'S', minScore: 3000 },
+      { rank: 'A', minScore: 2000 },
+      { rank: 'B', minScore: 1200 },
+      { rank: 'C', minScore: 600 },
+      { rank: 'D', minScore: 0 },
+    ];
+    const grade = (gradeRanks.find(r => scoreRef.current >= r.minScore) || { rank: 'D' }).rank;
+    if (window.WiseXP) window.WiseXP.reportGame({ score: scoreRef.current, correct: correctRef.current, total, maxCombo: maxComboRef.current, grade });
+
     setTimeout(() => {
       onEnd({
         score: scoreRef.current,
@@ -293,6 +305,9 @@ export default function Game({ session, levelKey, onEnd }) {
       shake();
       showEffect('❌', 'wrong', laneIndex);
       setChoices(prev => prev.map(c => c.id === choice.id ? { ...c, fadingOut: true } : c));
+
+      // Report wrong answer to WiseXP
+      if (window.WiseXP) window.WiseXP.reportWrong({ question: word.english, correct: word.correct, playerAnswer: choice.text });
     }
   }, [spawnLane]);
 
