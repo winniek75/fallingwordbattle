@@ -1332,22 +1332,10 @@ export function shuffleArr(arr) {
   return a;
 }
 
-// Kanji to hiragana mapping for lower levels
-const HIRAGANA_MAP = {
-  '犬': 'いぬ', '猫': 'ねこ', '鳥': 'とり', '花': 'はな', '雨': 'あめ',
-  '本': 'ほん', '学校': 'がっこう', '病院': 'びょういん', '公園': 'こうえん',
-  '電車': 'でんしゃ', '牛乳': 'ぎゅうにゅう', '朝食': 'ちょうしょく',
-  '走る': 'はしる', '泳ぐ': 'およぐ', '書く': 'かく', '歌う': 'うたう',
-  '見る': 'みる', '料理する': 'りょうりする', '寒い': 'さむい', '暑い': 'あつい',
-  '疲れた': 'つかれた', '幸せな': 'しあわせな',
-};
+import { READINGS } from './readings.js';
 
 function toHiragana(japanese) {
-  let result = japanese;
-  for (const [kanji, hira] of Object.entries(HIRAGANA_MAP)) {
-    result = result.replace(kanji, hira);
-  }
-  return result;
+  return READINGS[japanese] || japanese;
 }
 
 export function buildSession(levelKey, count = 12, useHiragana = false) {
