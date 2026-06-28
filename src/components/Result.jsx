@@ -19,8 +19,8 @@ export default function Result({ data, levelKey, levelInfo, onRetry, onReLearn, 
   const gameRank = getRank(score);
   const highScore = getHighScore(levelKey);
   const total = correctCount + wrongCount + missCount;
-  const accuracy = correctCount + wrongCount > 0
-    ? Math.round((correctCount / (correctCount + wrongCount)) * 100)
+  const accuracy = total > 0
+    ? Math.round((correctCount / total) * 100)
     : 0;
 
   const isPerfect = accuracy === 100 && correctCount > 0;
