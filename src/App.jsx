@@ -6,7 +6,7 @@ import FlashInput from './components/FlashInput';
 import Game from './components/Game';
 import Result from './components/Result';
 import { LEVEL_INFO, buildSession, buildWeakSession } from './data/wordData';
-import { loadPlayerLevel, savePlayerLevel, loadXP, getCurrentRank, getWeakWordCount, loadStats } from './hooks/useWordStats';
+import { loadPlayerLevel, savePlayerLevel, loadXP, getCurrentRank, getWeakWordCount, loadStats, updateStreak } from './hooks/useWordStats';
 
 const GLOBAL_STYLES = `
   @keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-15px)} }

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { LEVEL_INFO } from '../data/wordData';
-import { getCurrentRank, getNextRank, loadXP, XP_RANKS, getHighScore } from '../hooks/useWordStats';
+import { LEVEL_INFO, WORD_DB } from '../data/wordData';
+import { getCurrentRank, getNextRank, loadXP, XP_RANKS, getHighScore, getLevelMastery, loadStreak } from '../hooks/useWordStats';
 
 const BG = 'linear-gradient(135deg, #FFF5F7 0%, #F5F0FF 35%, #F0F8FF 70%, #F0FFF4 100%)';
 
@@ -35,10 +35,11 @@ const LEVEL_RULES = [
   { icon: '⏱️', text: '30秒間でどれだけ正解できるか？' },
 ];
 
-export default function LevelSelect({ onSelect, xp, currentRank, weakCount, currentPlayer, onChangePlayer, useHiragana, setUseHiragana }) {
+export default function LevelSelect({ onSelect, xp, currentRank, weakCount, currentPlayer, onChangePlayer, useHiragana, setUseHiragana, gameMode, setGameMode }) {
   const [hoveredLevel, setHoveredLevel] = useState(null);
   const [showRoadmap, setShowRoadmap] = useState(false);
 
+  const streak = loadStreak();
   const xpForNext = getNextRank(xp);
   const progressPct = xpForNext
     ? Math.min(100, ((xp - currentRank.minXP) / (xpForNext.minXP - currentRank.minXP)) * 100)
@@ -115,6 +116,31 @@ export default function LevelSelect({ onSelect, xp, currentRank, weakCount, curr
           </div>
         </div>
 
+        {/* Daily Streak */}
+        {streak.current >= 1 && (
+          <div style={{
+            width: '100%', background: 'linear-gradient(135deg, #FF8A5C, #FF6B9D)',
+            borderRadius: 16, padding: '12px 18px',
+            boxShadow: '0 4px 16px rgba(255,138,92,0.3)',
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            color: 'white',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <span style={{ fontSize: 28 }}>{'\uD83D\uDD25'}</span>
+              <div>
+                <div style={{ fontFamily: 'Fredoka One', fontSize: 20 }}>{streak.current}{'\u65E5\u9023\u7D9A'}</div>
+                <div style={{ fontSize: 11, opacity: 0.85 }}>
+                  {streak.current >= 7 ? 'XP 1.5x\u30DC\u30FC\u30CA\u30B9!' : streak.current >= 3 ? 'XP 1.3x\u30DC\u30FC\u30CA\u30B9!' : streak.current >= 2 ? 'XP 1.1x\u30DC\u30FC\u30CA\u30B9!' : '\u660E\u65E5\u3082\u7D9A\u3051\u3088\u3046!'}
+                </div>
+              </div>
+            </div>
+            <div style={{ fontSize: 11, opacity: 0.7, textAlign: 'right' }}>
+              {'\u4ECA\u65E5'}: {streak.todayPlays}{'\u56DE\u30D7\u30EC\u30A4'}
+              <br />{'\u6700\u9AD8'}: {streak.best}{'\u65E5'}
+            </div>
+          </div>
+        )}
+
         {/* Hiragana/Kanji Toggle */}
         <div style={{
           width: '100%',
@@ -152,11 +178,53 @@ export default function LevelSelect({ onSelect, xp, currentRank, weakCount, curr
           </button>
         </div>
 
+        {/* Game Mode Selection */}
+        <div style={{ width: '100%', display: 'flex', gap: 8 }}>
+          <button
+            onClick={() => setGameMode('normal')}
+            style={{
+              flex: 1,
+              padding: '14px 12px',
+              borderRadius: 16,
+              border: gameMode === 'normal' ? '3px solid #4ECDC4' : '2px solid #E5E7EB',
+              background: gameMode === 'normal' ? 'rgba(78,205,196,0.1)' : 'white',
+              cursor: 'pointer',
+              textAlign: 'center',
+              boxShadow: gameMode === 'normal' ? '0 4px 16px rgba(78,205,196,0.25)' : '0 2px 8px rgba(0,0,0,0.06)',
+              transition: 'all 0.2s',
+            }}
+          >
+            <div style={{ fontSize: 24, marginBottom: 4 }}>{'⏱️'}</div>
+            <div style={{ fontWeight: 800, fontSize: 14, color: gameMode === 'normal' ? '#4ECDC4' : '#555' }}>ノーマル</div>
+            <div style={{ fontSize: 11, color: '#999', marginTop: 2 }}>30秒タイムアタック</div>
+          </button>
+          <button
+            onClick={() => setGameMode('survival')}
+            style={{
+              flex: 1,
+              padding: '14px 12px',
+              borderRadius: 16,
+              border: gameMode === 'survival' ? '3px solid #FF6B9D' : '2px solid #E5E7EB',
+              background: gameMode === 'survival' ? 'rgba(255,107,157,0.1)' : 'white',
+              cursor: 'pointer',
+              textAlign: 'center',
+              boxShadow: gameMode === 'survival' ? '0 4px 16px rgba(255,107,157,0.25)' : '0 2px 8px rgba(0,0,0,0.06)',
+              transition: 'all 0.2s',
+            }}
+          >
+            <div style={{ fontSize: 24, marginBottom: 4 }}>{'❤️'}</div>
+            <div style={{ fontWeight: 800, fontSize: 14, color: gameMode === 'survival' ? '#FF6B9D' : '#555' }}>サバイバル</div>
+            <div style={{ fontSize: 11, color: '#999', marginTop: 2 }}>3ライフ・無限出題</div>
+          </button>
+        </div>
+
         {/* Level selection */}
         <div style={{ width: '100%' }}>
           <div style={{ fontSize: 12, fontWeight: 700, color: '#999', letterSpacing: 1, marginBottom: 8 }}>📚 レベルを選択</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {Object.entries(LEVEL_INFO).map(([key, info]) => (
+            {Object.entries(LEVEL_INFO).map(([key, info]) => {
+              const mastery = WORD_DB[key] ? getLevelMastery(key, WORD_DB[key]) : null;
+              return (
               <button
                 key={key}
                 onClick={() => onSelect(key)}
@@ -173,19 +241,45 @@ export default function LevelSelect({ onSelect, xp, currentRank, weakCount, curr
               >
                 <div style={{ fontSize: 28 }}>{info.icon}</div>
                 <div style={{ textAlign: 'left', flex: 1 }}>
-                  <div style={{ fontWeight: 800, fontSize: 16, color: hoveredLevel === key ? 'white' : '#333' }}>{info.name}</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontWeight: 800, fontSize: 16, color: hoveredLevel === key ? 'white' : '#333' }}>{info.name}</span>
+                    {mastery && mastery.masteryPct > 0 && (
+                      <span style={{
+                        fontSize: 11, fontWeight: 800,
+                        color: hoveredLevel === key ? 'rgba(255,255,255,0.9)' : (mastery.masteryPct >= 80 ? '#FFD700' : info.color),
+                      }}>
+                        {mastery.masteryPct}%
+                      </span>
+                    )}
+                  </div>
                   <div style={{ fontSize: 12, color: hoveredLevel === key ? 'rgba(255,255,255,0.85)' : '#999' }}>
-                    {info.level}  ·  CEFR {info.cefr}  ·  {info.wordCount}語
+                    {info.level}  {'\u00B7'}  CEFR {info.cefr}  {'\u00B7'}  {info.wordCount}{'\u8A9E'}
                     {getHighScore(key) > 0 && (
                       <span style={{ marginLeft: 8, color: hoveredLevel === key ? 'rgba(255,255,255,0.9)' : '#FFD700', fontWeight: 700 }}>
                         Best: {getHighScore(key).toLocaleString()}
                       </span>
                     )}
                   </div>
+                  {/* Mastery progress bar */}
+                  {mastery && mastery.practiced > 0 && (
+                    <div style={{
+                      width: '100%', height: 4, borderRadius: 4, marginTop: 6,
+                      background: hoveredLevel === key ? 'rgba(255,255,255,0.25)' : '#F0F0F0',
+                      overflow: 'hidden',
+                    }}>
+                      <div style={{
+                        height: '100%',
+                        width: `${mastery.masteryPct}%`,
+                        background: hoveredLevel === key ? 'rgba(255,255,255,0.8)' : info.color,
+                        borderRadius: 4, transition: 'width 0.5s ease',
+                      }} />
+                    </div>
+                  )}
                 </div>
-                <div style={{ fontSize: 18, color: hoveredLevel === key ? 'white' : '#ccc' }}>›</div>
+                <div style={{ fontSize: 18, color: hoveredLevel === key ? 'white' : '#ccc' }}>{'\u203A'}</div>
               </button>
-            ))}
+              );
+            })}
 
             {/* Weak words mode */}
             <button
@@ -249,19 +343,19 @@ export default function LevelSelect({ onSelect, xp, currentRank, weakCount, curr
 function Roadmap() {
   const phases = [
     {
-      phase: 'Phase 1 ✅ 現在',
+      phase: 'Phase 1 \u2705 \u5B8C\u4E86',
       color: '#4ECDC4',
-      items: ['レベル別出題（英検5〜2級）', '苦手単語モード', 'スコア・コンボシステム', 'XPランクシステム（土台）'],
+      items: ['\u30EC\u30D9\u30EB\u5225\u51FA\u984C\uFF08\u82F1\u691C5\u301C2\u7D1A\uFF09', '\u82E6\u624B\u5358\u8A9E\u30E2\u30FC\u30C9', '\u30B9\u30B3\u30A2\u30FB\u30B3\u30F3\u30DC\u30B7\u30B9\u30C6\u30E0', 'XP\u30E9\u30F3\u30AF\u30B7\u30B9\u30C6\u30E0'],
     },
     {
-      phase: 'Phase 2 🚧 近日実装',
-      color: '#FFB347',
-      items: ['XPでランクアップ表示', '間隔反復（SRS）アルゴリズム', '単語習得率トラッキング', 'ロードマップ進捗UI'],
+      phase: 'Phase 2 \u2705 \u5B8C\u4E86',
+      color: '#45B7D1',
+      items: ['\u5358\u8A9E\u30DE\u30B9\u30BF\u30EA\u30FC\u30B7\u30B9\u30C6\u30E0\uFF08\u26050-5\uFF09', '\u30C7\u30A4\u30EA\u30FC\u30B9\u30C8\u30EA\u30FC\u30AF & XP\u30DC\u30FC\u30CA\u30B9', '\u30EC\u30D9\u30EB\u5225\u7FD2\u5F97\u5EA6\u8868\u793A', '\u9023\u7D9A\u6B63\u89E3\u3067\u30EC\u30D9\u30EB\u30A2\u30C3\u30D7'],
     },
     {
-      phase: 'Phase 3 🔮 予定',
+      phase: 'Phase 3 \uD83D\uDD2E \u4E88\u5B9A',
       color: '#A78BFA',
-      items: ['マルチプレイ対戦（WebSocket）', 'デイリー/ウィークリーランキング', 'バッジ・実績システム', 'フレンド機能'],
+      items: ['\u30DE\u30EB\u30C1\u30D7\u30EC\u30A4\u5BFE\u6226\uFF08WebSocket\uFF09', '\u30C7\u30A4\u30EA\u30FC/\u30A6\u30A3\u30FC\u30AF\u30EA\u30FC\u30E9\u30F3\u30AD\u30F3\u30B0', '\u30D0\u30C3\u30B8\u30FB\u5B9F\u7E3E\u30B7\u30B9\u30C6\u30E0', '\u30D5\u30EC\u30F3\u30C9\u6A5F\u80FD'],
     },
   ];
   return (

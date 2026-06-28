@@ -1332,16 +1332,36 @@ export function shuffleArr(arr) {
   return a;
 }
 
-export function buildSession(levelKey, count = 12) {
+// Kanji to hiragana mapping for lower levels
+const HIRAGANA_MAP = {
+  '犬': 'いぬ', '猫': 'ねこ', '鳥': 'とり', '花': 'はな', '雨': 'あめ',
+  '本': 'ほん', '学校': 'がっこう', '病院': 'びょういん', '公園': 'こうえん',
+  '電車': 'でんしゃ', '牛乳': 'ぎゅうにゅう', '朝食': 'ちょうしょく',
+  '走る': 'はしる', '泳ぐ': 'およぐ', '書く': 'かく', '歌う': 'うたう',
+  '見る': 'みる', '料理する': 'りょうりする', '寒い': 'さむい', '暑い': 'あつい',
+  '疲れた': 'つかれた', '幸せな': 'しあわせな',
+};
+
+function toHiragana(japanese) {
+  let result = japanese;
+  for (const [kanji, hira] of Object.entries(HIRAGANA_MAP)) {
+    result = result.replace(kanji, hira);
+  }
+  return result;
+}
+
+export function buildSession(levelKey, count = 12, useHiragana = false) {
   const pool = WORD_DB[levelKey] || [];
+  const shouldConvert = useHiragana && ['eiken5', 'eiken4', 'eiken3'].includes(levelKey);
   const words = shuffleArr([...pool]).slice(0, Math.min(count, pool.length));
-  const allJapanese = pool.map(w => w.japanese);
+  const allJapanese = pool.map(w => shouldConvert ? toHiragana(w.japanese) : w.japanese);
   return words.map(w => {
-    const wrongPool = shuffleArr(allJapanese.filter(j => j !== w.japanese));
+    const jp = shouldConvert ? toHiragana(w.japanese) : w.japanese;
+    const wrongPool = shuffleArr(allJapanese.filter(j => j !== jp));
     return {
       english: w.english,
-      japanese: w.japanese,
-      correct: w.japanese,
+      japanese: jp,
+      correct: jp,
       wrongs: wrongPool.slice(0, 3),
       phonetic: w.phonetic,
       sentence: w.sentence,
