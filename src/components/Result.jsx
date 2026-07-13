@@ -35,6 +35,18 @@ export default function Result({ data, levelKey, levelInfo, onRetry, onReLearn, 
     return () => clearTimeout(t);
   }, []);
 
+  // → MoWISE portal へスコア送信 (WiseGame Bridge) — 結果表示時に1回だけ
+  useEffect(() => {
+    try {
+      window.WiseGame && window.WiseGame.reportComplete({
+        score, maxScore: Math.max(score, 100), accuracy,
+        metadata: { level: levelKey, gameMode, maxCombo,
+                    correctCount, wrongCount, missCount, earnedXP }
+      });
+    } catch (e) {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const nextRank = getNextRank(xp);
   const progressPct = nextRank
     ? Math.min(100, ((xp - rank.minXP) / (nextRank.minXP - rank.minXP)) * 100)
