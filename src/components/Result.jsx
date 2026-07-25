@@ -41,7 +41,7 @@ export default function Result({ data, levelKey, levelInfo, onRetry, onReLearn, 
       window.WiseGame && window.WiseGame.reportComplete({
         score, maxScore: Math.max(score, 100), accuracy,
         metadata: { level: levelKey, gameMode, maxCombo,
-                    correctCount, wrongCount, missCount, earnedXP }
+                    correctCount, wrongCount, missCount, earnedXP, wrongAnswers: [] }
       });
     } catch (e) {}
     // eslint-disable-next-line react-hooks/exhaustive-deps
