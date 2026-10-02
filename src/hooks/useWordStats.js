@@ -278,7 +278,8 @@ export function loadHighScores() {
 
 export function saveHighScore(levelKey, score) {
   const scores = loadHighScores();
-  if (!scores[levelKey] || score > scores[levelKey]) {
+  // 0点は「ハイスコア更新」にしない
+  if (score > 0 && (!scores[levelKey] || score > scores[levelKey])) {
     scores[levelKey] = score;
     localStorage.setItem(HIGH_SCORE_KEY, JSON.stringify(scores));
     return true;

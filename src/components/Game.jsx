@@ -3,9 +3,11 @@ import { LEVEL_INFO } from '../data/wordData';
 import { recordResult, addXP, saveHighScore, logWrongAnswer, calculateXP, updateStreak, loadMastery, getWordMastery } from '../hooks/useWordStats';
 import { playCorrectSound, playWrongSound } from '../utils/sound';
 import { speak } from '../utils/speak';
+import { getGrade } from '../utils/grade';
 
 const GAME_DURATION = 30;
 const FALL_SPEED = 1.1;
+const EASY_FALL_SPEED = 0.55; // やさしいモード: 半分の速さ・加速なし
 const CHOICE_GAP = 70;
 const DANGER_Y = 0.82; // fraction of area height
 
@@ -66,6 +68,15 @@ export default function Game({ session, levelKey, gameMode = 'normal', onEnd }) 
   const gameModeRef = useRef(gameMode);
   const lanesRef = useRef([null, null]);
   const newWordsRef = useRef(0);
+  // やさしいモード（1レーン・ゆっくり・セッションの語を1回ずつ）
+  const isEasy = gameMode === 'easy';
+  const laneCount = isEasy ? 1 : 2;
+  const resolvedRef = useRef(0); // やさしいモードで出題が終わった語数
+  const [resolvedCount, setResolvedCount] = useState(0);
+  // 「誤答（えらびまちがい）」と「時間切れ（とりのがし）」を別々に記録する
+  const wrongLogRef = useRef([]);   // [{ english, correct, chosen }]
+  const missedWordsRef = useRef([]); // 取り逃した語（重複なし）
+  const handledMissIdsRef = useRef(new Set());
 
   // Adaptive difficulty: track recent 5 answers
   const recentAnswersRef = useRef([]); // array of booleans (true=correct, false=wrong/miss)
@@ -93,7 +104,7 @@ export default function Game({ session, levelKey, gameMode = 'normal', onEnd }) 
         adaptiveMultiplierRef.current = 0.8;
       } else if (accuracy5 > 0.8) {
         // Doing great: speed up by 15%
-        adaptiveMultiplierRef.current = 1.15;
+        adaptiveMultiplierRef.current = gameModeRef.current === 'easy' ? 1.0 : 1.15;
       } else {
         adaptiveMultiplierRef.current = 1.0;
       }
@@ -101,6 +112,10 @@ export default function Game({ session, levelKey, gameMode = 'normal', onEnd }) 
   }, []);
 
   const getNextWord = useCallback((excludeEnglish = null) => {
+    if (gameModeRef.current === 'easy') {
+      // 1語ずつ・くり返しなし
+      return poolRef.current.shift() || null;
+    }
     if (!poolRef.current.length) {
       poolRef.current = shuffle([...session]);
     }
@@ -150,7 +165,7 @@ export default function Game({ session, levelKey, gameMode = 'normal', onEnd }) 
   useEffect(() => {
     poolRef.current = shuffle([...session]);
     spawnLane(0, null);
-    setTimeout(() => spawnLane(1, null), 200);
+    if (gameModeRef.current !== 'easy') setTimeout(() => spawnLane(1, null), 200);
 
     // Timer - only for normal mode
     if (gameModeRef.current === 'normal') {
@@ -194,18 +209,14 @@ export default function Game({ session, levelKey, gameMode = 'normal', onEnd }) 
     const totalXP = addXP(earnedXP);
 
     // Save high score to localStorage
-    const isNewHighScore = saveHighScore(levelKey, scoreRef.current);
+    const isNewHighScore = saveHighScore(gameModeRef.current === 'easy' ? `${levelKey}_easy` : levelKey, scoreRef.current);
 
     // Report game results to WiseXP
     const total = correctRef.current + wrongRef.current + missRef.current;
-    const gradeRanks = [
-      { rank: 'S', minScore: 3000 },
-      { rank: 'A', minScore: 2000 },
-      { rank: 'B', minScore: 1200 },
-      { rank: 'C', minScore: 600 },
-      { rank: 'D', minScore: 0 },
-    ];
-    const grade = (gradeRanks.find(r => scoreRef.current >= r.minScore) || { rank: 'D' }).rank;
+    const grade = getGrade({
+      score: scoreRef.current, gameMode: gameModeRef.current,
+      correctCount: correctRef.current, wrongCount: wrongRef.current, missCount: missRef.current,
+    }).rank;
     if (window.WiseXP) window.WiseXP.reportGame({ score: scoreRef.current, correct: correctRef.current, total, maxCombo: maxComboRef.current, grade });
 
     setTimeout(() => {
@@ -224,6 +235,8 @@ export default function Game({ session, levelKey, gameMode = 'normal', onEnd }) 
         streakMult: xpResult.streakMult,
         accuracy: xpResult.accuracy,
         newWordsLearned: newWordsRef.current,
+        wrongAnswers: wrongLogRef.current.slice(),
+        missedWords: missedWordsRef.current.slice(),
       });
     }, 200);
   }, [onEnd, levelKey]);
@@ -239,6 +252,24 @@ export default function Game({ session, levelKey, gameMode = 'normal', onEnd }) 
     }
   }, [endGame]);
 
+  // 1語の出題が終わったあと（正解 or 取り逃し）: 次の語を出す。やさしいモードは全語終わったら終了。
+  const advanceLane = useCallback((laneIdx) => {
+    if (gameModeRef.current === 'easy') {
+      resolvedRef.current += 1;
+      setResolvedCount(resolvedRef.current);
+      if (resolvedRef.current >= session.length || !poolRef.current.length) {
+        setTimeout(() => endGame(), 700);
+        return;
+      }
+    }
+    setTimeout(() => {
+      if (phaseRef.current !== 'ended') {
+        const other = gameModeRef.current === 'easy' ? null : lanesRef.current[1 - laneIdx];
+        spawnLane(laneIdx, other?.english);
+      }
+    }, 500);
+  }, [session, spawnLane, endGame]);
+
   // Game loop
   useEffect(() => {
     const loop = (ts) => {
@@ -248,7 +279,9 @@ export default function Game({ session, levelKey, gameMode = 'normal', onEnd }) 
       lastTs.current = ts;
 
       // Adaptive difficulty applied to fall speed
-      const baseSpeed = FALL_SPEED + scoreRef.current * 0.0003;
+      const baseSpeed = gameModeRef.current === 'easy'
+        ? EASY_FALL_SPEED
+        : FALL_SPEED + scoreRef.current * 0.0003;
       const speed = baseSpeed * adaptiveMultiplierRef.current;
       const dy = speed * (delta / 16.67);
 
@@ -270,20 +303,28 @@ export default function Game({ session, levelKey, gameMode = 'normal', onEnd }) 
         const toMiss = [];
         for (const c of next) {
           if (!c.fadingOut && c.isCorrect && c.y > dangerY) {
-            toMiss.push(c.laneIndex);
+            toMiss.push(c);
           }
         }
 
-        for (const laneIdx of [...new Set(toMiss)]) {
+        for (const missed of toMiss) {
+          const laneIdx = missed.laneIndex;
           // fade out all in lane
           next = next.map(c => c.laneIndex === laneIdx ? { ...c, fadingOut: true, opacity: 0.8 } : c);
+          // 集計などの副作用は1つの取り逃しにつき1回だけ（updater の二重実行対策）
+          if (handledMissIdsRef.current.has(missed.id)) continue;
+          handledMissIdsRef.current.add(missed.id);
+          // 時間切れ（取り逃し）: 語彙の「苦手」には入れず、結果画面で別に見せる
+          if (!missedWordsRef.current.some(w => w.english === missed.word.english)) {
+            missedWordsRef.current.push(missed.word);
+          }
           // miss stat
           missRef.current += 1;
           setMissCount(m => m + 1);
           comboRef.current = 0;
           setCombo(0);
           shake();
-          showEffect(`MISS!`, 'miss', laneIdx);
+          showEffect('\u23F3 \u3058\u304B\u3093\u304E\u308C', 'miss', laneIdx);
 
           // Adaptive: miss counts as wrong
           updateAdaptiveDifficulty(false);
@@ -291,12 +332,7 @@ export default function Game({ session, levelKey, gameMode = 'normal', onEnd }) 
           // Survival mode: lose a life on miss
           loseSurvivalLife();
 
-          setTimeout(() => {
-            if (phaseRef.current !== 'ended') {
-              const other = lanesRef.current[1 - laneIdx];
-              spawnLane(laneIdx, other?.english);
-            }
-          }, 500);
+          advanceLane(laneIdx);
         }
 
         return next;
@@ -306,7 +342,7 @@ export default function Game({ session, levelKey, gameMode = 'normal', onEnd }) 
     };
     animRef.current = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(animRef.current);
-  }, [spawnLane, updateAdaptiveDifficulty, loseSurvivalLife]);
+  }, [advanceLane, updateAdaptiveDifficulty, loseSurvivalLife]);
 
   const shake = () => {
     setShakeScreen(true);
@@ -375,7 +411,8 @@ export default function Game({ session, levelKey, gameMode = 'normal', onEnd }) 
       showEffect(`+${gained}`, 'correct', laneIndex);
 
       // Confetti
-      const ex = laneIndex === 0 ? 80 : 240;
+      const areaWNow = areaRef.current?.clientWidth || 350;
+      const ex = gameModeRef.current === 'easy' ? areaWNow / 2 : (laneIndex === 0 ? areaWNow * 0.25 : areaWNow * 0.75);
       setConfettis(prev => [...prev, { id: Date.now(), x: ex, y: Math.max(50, y) }]);
       setTimeout(() => setConfettis(prev => prev.slice(1)), 800);
 
@@ -383,17 +420,13 @@ export default function Game({ session, levelKey, gameMode = 'normal', onEnd }) 
       setChoices(prev => prev.map(c => c.laneIndex === laneIndex ? { ...c, fadingOut: true, opacity: 0.8 } : c));
 
       // Spawn next
-      setTimeout(() => {
-        if (phaseRef.current !== 'ended') {
-          const other = lanesRef.current[1 - laneIndex];
-          spawnLane(laneIndex, other?.english);
-        }
-      }, 500);
+      advanceLane(laneIndex);
 
     } else {
       // Wrong
       recordResult(word.english, false);
       logWrongAnswer(word);
+      wrongLogRef.current.push({ english: word.english, correct: word.correct, chosen: choice.text });
 
       // Sound effect + TTS pronunciation (so they learn the correct word)
       playWrongSound();
@@ -416,7 +449,7 @@ export default function Game({ session, levelKey, gameMode = 'normal', onEnd }) 
       // Report wrong answer to WiseXP
       if (window.WiseXP) window.WiseXP.reportWrong({ question: word.english, correct: word.correct, playerAnswer: choice.text });
     }
-  }, [spawnLane, updateAdaptiveDifficulty, showMilestone, loseSurvivalLife]);
+  }, [advanceLane, updateAdaptiveDifficulty, showMilestone, loseSurvivalLife]);
 
   const levelInfo = levelKey === 'weak'
     ? { name: '\u82E6\u624B\u5358\u8A9E', icon: '\uD83D\uDD34', color: '#FF6B6B' }
@@ -424,7 +457,8 @@ export default function Game({ session, levelKey, gameMode = 'normal', onEnd }) 
 
   const areaH = areaRef.current?.clientHeight || 500;
   const areaW = areaRef.current?.clientWidth || 350;
-  const laneW = areaW / 2;
+  const laneW = areaW / laneCount;
+  const choiceW = isEasy ? Math.min(areaW - 32, 440) : laneW - 16;
 
   const isSurvival = gameMode === 'survival';
 
@@ -448,7 +482,14 @@ export default function Game({ session, levelKey, gameMode = 'normal', onEnd }) 
           <div style={{ fontSize: 20, fontWeight: 800, color: combo >= 5 ? '#FFD700' : '#333', fontFamily: 'Fredoka One',
             animation: combo >= 3 ? 'pulse 0.6s ease infinite' : 'none' }}>{combo}</div>
         </div>
-        {isSurvival ? (
+        {isEasy ? (
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: 11, color: '#aaa', fontWeight: 700 }}>{'\uD83D\uDCD6'} {'\u306E\u3053\u308A'}</div>
+            <div style={{ fontSize: 20, fontWeight: 800, color: '#333', fontFamily: 'Fredoka One' }}>
+              {Math.max(0, session.length - resolvedCount)}<span style={{ fontSize: 12, color: '#aaa' }}>/{session.length}{'\u8A9E'}</span>
+            </div>
+          </div>
+        ) : isSurvival ? (
           <div style={{ textAlign: 'center' }}>
             <div style={{ fontSize: 11, color: '#aaa', fontWeight: 700 }}>{'\u2764\uFE0F'} LIVES</div>
             <div style={{ fontSize: 20, fontWeight: 800, color: lives <= 1 ? '#FF6B6B' : '#FF6B9D', fontFamily: 'Fredoka One',
@@ -468,11 +509,16 @@ export default function Game({ session, levelKey, gameMode = 'normal', onEnd }) 
         <div style={{ fontSize: 13, color: levelInfo.color || '#999', fontWeight: 700 }}>
           {levelInfo.icon} {levelInfo.name}
           {isSurvival && <div style={{ fontSize: 10, color: '#FF8A5C' }}>SURVIVAL</div>}
+          {isEasy && <div style={{ fontSize: 10, color: '#22B573' }}>{'\u3084\u3055\u3057\u3044'}</div>}
         </div>
       </div>
 
       {/* Timer bar / Survival indicator */}
-      {isSurvival ? (
+      {isEasy ? (
+        <div style={{ width: '100%', height: 5, background: '#F0F0F0' }}>
+          <div style={{ height: '100%', width: `${(resolvedCount / Math.max(1, session.length)) * 100}%`, background: 'linear-gradient(90deg, #7ED957, #4ECDC4)', transition: 'width 0.3s ease' }} />
+        </div>
+      ) : isSurvival ? (
         <div style={{ width: '100%', height: 5, background: '#F0F0F0' }}>
           <div style={{ height: '100%', width: `${(lives / 3) * 100}%`, background: lives <= 1 ? '#FF6B6B' : 'linear-gradient(90deg, #FF6B9D, #A78BFA)', transition: 'width 0.3s ease' }} />
         </div>
@@ -484,12 +530,12 @@ export default function Game({ session, levelKey, gameMode = 'normal', onEnd }) 
 
       {/* Lane headers */}
       <div style={{ display: 'flex', borderBottom: '2px solid rgba(0,0,0,0.06)' }}>
-        {[0, 1].map(i => (
-          <div key={i} style={{ flex: 1, padding: '10px 12px', background: i === 0 ? 'rgba(255,107,157,0.08)' : 'rgba(69,183,209,0.08)', borderRight: i === 0 ? '2px solid rgba(0,0,0,0.06)' : 'none', textAlign: 'center' }}>
+        {(isEasy ? [0] : [0, 1]).map(i => (
+          <div key={i} style={{ flex: 1, padding: '10px 12px', background: i === 0 ? 'rgba(255,107,157,0.08)' : 'rgba(69,183,209,0.08)', borderRight: i === 0 && !isEasy ? '2px solid rgba(0,0,0,0.06)' : 'none', textAlign: 'center' }}>
             <div style={{ fontSize: 11, color: i === 0 ? '#FF6B9D' : '#45B7D1', fontWeight: 700, marginBottom: 2 }}>
-              {i === 0 ? '\uD83D\uDC48 LEFT' : 'RIGHT \uD83D\uDC49'}
+              {isEasy ? '\u3053\u306E\u82F1\u8A9E\u306E\u3044\u307F\u3092 \u30BF\u30C3\u30D7\u3057\u3088\u3046' : i === 0 ? '\uD83D\uDC48 LEFT' : 'RIGHT \uD83D\uDC49'}
             </div>
-            <div style={{ fontFamily: 'Fredoka One', fontSize: 20, color: '#333', minHeight: 28 }}>
+            <div style={{ fontFamily: 'Fredoka One', fontSize: isEasy ? 30 : 20, color: '#333', minHeight: 28 }}>
               {lanes[i]?.english || '...'}
             </div>
           </div>
@@ -500,11 +546,11 @@ export default function Game({ session, levelKey, gameMode = 'normal', onEnd }) 
       <div ref={areaRef} style={{ flex: 1, position: 'relative', overflow: 'hidden', paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
         {/* Danger zone - just a line, no background so buttons stay visible */}
         <div style={{ position: 'absolute', left: 0, right: 0, top: `${DANGER_Y * 100}%`, borderTop: '2px dashed rgba(255,107,107,0.5)', pointerEvents: 'none', zIndex: 5 }}>
-          <span style={{ fontSize: 10, color: 'rgba(255,107,107,0.7)', fontWeight: 700, paddingLeft: 8 }}>{'\u26A0\uFE0F'} DANGER</span>
+          <span style={{ fontSize: 10, color: 'rgba(255,107,107,0.7)', fontWeight: 700, paddingLeft: 8 }}>{'\u26A0\uFE0F'} {isEasy ? '\u3053\u3053\u307E\u3067\u306B \u3048\u3089\u307C\u3046' : 'DANGER'}</span>
         </div>
 
         {/* Lane divider */}
-        <div style={{ position: 'absolute', left: '50%', top: 0, bottom: 0, width: 2, background: 'rgba(0,0,0,0.06)', pointerEvents: 'none' }} />
+        {!isEasy && <div style={{ position: 'absolute', left: '50%', top: 0, bottom: 0, width: 2, background: 'rgba(0,0,0,0.06)', pointerEvents: 'none' }} />}
 
         {/* Choices */}
         {choices.map(c => (
@@ -513,8 +559,8 @@ export default function Game({ session, levelKey, gameMode = 'normal', onEnd }) 
             onClick={() => handleChoiceClick(c)}
             style={{
               position: 'absolute',
-              left: c.laneIndex === 0 ? 8 : laneW + 8,
-              width: laneW - 16,
+              left: isEasy ? (areaW - choiceW) / 2 : (c.laneIndex === 0 ? 8 : laneW + 8),
+              width: choiceW,
               top: c.y,
               padding: '12px 8px',
               borderRadius: 14,
@@ -523,7 +569,7 @@ export default function Game({ session, levelKey, gameMode = 'normal', onEnd }) 
               color: 'white',
               fontFamily: 'Nunito',
               fontWeight: 800,
-              fontSize: 15,
+              fontSize: isEasy ? 18 : 15,
               opacity: c.opacity,
               cursor: 'pointer',
               boxShadow: '0 4px 16px rgba(0,0,0,0.28), 0 0 0 2px rgba(255,255,255,0.5)',
@@ -541,7 +587,7 @@ export default function Game({ session, levelKey, gameMode = 'normal', onEnd }) 
         {effects.map(e => (
           <div key={e.id} style={{
             position: 'absolute',
-            left: e.laneIndex === 0 ? '25%' : '75%',
+            left: isEasy ? '50%' : e.laneIndex === 0 ? '25%' : '75%',
             top: '30%',
             transform: 'translateX(-50%)',
             fontWeight: 800,

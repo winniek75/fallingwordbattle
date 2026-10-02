@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { LEVEL_INFO, WORD_DB } from '../data/wordData';
 import { getCurrentRank, getNextRank, getHighScore, getLevelMastery, loadStreak } from '../hooks/useWordStats';
+import { PORTAL_URL } from '../utils/grade';
 
 const BG = 'linear-gradient(135deg, #FFF5F7 0%, #F5F0FF 35%, #F0F8FF 70%, #F0FFF4 100%)';
 
@@ -13,7 +14,7 @@ function injectResponsiveStyles() {
     .fwb-stats-row { display: flex; gap: 12px; align-items: stretch; }
     .fwb-level-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
     .fwb-rules-row { display: flex; gap: 20px; justify-content: center; font-size: 12px; color: #bbb; }
-    .fwb-main { max-width: 1200px; width: 100%; padding: 24px 40px; }
+    .fwb-main { max-width: 1200px; width: 100%; padding: 24px 40px; box-sizing: border-box; margin: auto 0; }
     .fwb-title { font-size: 36px; }
     .fwb-level-card { padding: 20px 18px 16px; }
     .fwb-level-icon { font-size: 32px; }
@@ -55,7 +56,7 @@ export default function LevelSelect({ onSelect, xp, currentRank, weakCount, curr
     <div style={{
       width: '100%', height: '100%', background: BG,
       display: 'flex', flexDirection: 'column',
-      position: 'relative', overflow: 'hidden',
+      position: 'relative', overflowX: 'hidden', overflowY: 'auto',
     }}>
       {/* Decorative bubbles */}
       {[
@@ -76,8 +77,7 @@ export default function LevelSelect({ onSelect, xp, currentRank, weakCount, curr
       <div style={{
         flex: 1, position: 'relative', zIndex: 1,
         display: 'flex', flexDirection: 'column',
-        alignItems: 'center', justifyContent: 'center',
-        minHeight: 0,
+        alignItems: 'center',
       }}>
         <div className="fwb-main" style={{
           display: 'flex', flexDirection: 'column', gap: 16,
@@ -95,7 +95,30 @@ export default function LevelSelect({ onSelect, xp, currentRank, weakCount, curr
               }}>
                 {'\u82F1\u5358\u8A9E\u30D0\u30C8\u30EB'} {'\u2694\uFE0F'}
               </div>
+              <div style={{ fontSize: 12, color: '#999', fontWeight: 700 }}>
+                フォーリングワードバトル ・ おちてくる日本語から 英単語のいみを えらぼう
+              </div>
+              <a href={PORTAL_URL} style={{ fontSize: 12, color: '#999', fontWeight: 700, textDecoration: 'none' }}>
+                🏠 学習ホームにもどる
+              </a>
             </div>
+            {!currentPlayer && (
+              <div
+                onClick={onChangePlayer}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 10,
+                  background: 'rgba(255,255,255,0.95)', padding: '8px 16px',
+                  borderRadius: 14, boxShadow: '0 2px 10px rgba(0,0,0,0.08)',
+                  cursor: 'pointer',
+                }}
+              >
+                <span style={{ fontSize: 26 }}>🎮</span>
+                <div>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: '#333' }}>ゲスト</div>
+                  <div style={{ fontSize: 11, color: '#999' }}>プレイヤーをつくる →</div>
+                </div>
+              </div>
+            )}
             {currentPlayer && (
               <div
                 onClick={onChangePlayer}
@@ -170,6 +193,7 @@ export default function LevelSelect({ onSelect, xp, currentRank, weakCount, curr
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8 }}>
               <div style={{ display: 'flex', gap: 6, flex: 1 }}>
                 {[
+                  { key: 'easy', icon: '\uD83D\uDC22', label: '\u3084\u3055\u3057\u3044', sub: '1\u30EC\u30FC\u30F3\u30FB\u3086\u3063\u304F\u308A\u30FB10\u8A9E', color: '#22B573' },
                   { key: 'normal', icon: '\u23F1\uFE0F', label: '\u30CE\u30FC\u30DE\u30EB', sub: '30\u79D2', color: '#4ECDC4' },
                   { key: 'survival', icon: '\u2764\uFE0F', label: '\u30B5\u30D0\u30A4\u30D0\u30EB', sub: '3\u30E9\u30A4\u30D5', color: '#FF6B9D' },
                 ].map(m => (
@@ -177,7 +201,7 @@ export default function LevelSelect({ onSelect, xp, currentRank, weakCount, curr
                     key={m.key}
                     onClick={() => setGameMode(m.key)}
                     style={{
-                      flex: 1, padding: '10px 8px', borderRadius: 14,
+                      flex: 1, padding: '10px 4px', borderRadius: 14, minWidth: 0,
                       border: gameMode === m.key ? `2px solid ${m.color}` : '2px solid #E8E8E8',
                       background: gameMode === m.key ? `${m.color}10` : 'white',
                       cursor: 'pointer', textAlign: 'center',
@@ -333,11 +357,15 @@ export default function LevelSelect({ onSelect, xp, currentRank, weakCount, curr
 
           {/* Rules hint */}
           <div className="fwb-rules-row">
-            {[
-              '\uD83D\uDC48\uD83D\uDC49 \u5DE6\u53F3\u30EC\u30FC\u30F3\u3067\u540C\u6642\u306B2\u554F',
-              '\u2B07\uFE0F \u65E5\u672C\u8A9E\u8A33\u304C\u843D\u3061\u3066\u304F\u308B\u2014\u30BF\u30C3\u30D7\u3067\u56DE\u7B54',
-              '\uD83D\uDD25 \u30B3\u30F3\u30DC\u3067\u30DC\u30FC\u30CA\u30B9XP',
-            ].map((t, i) => (
+            {(gameMode === 'easy' ? [
+              '🐢 1レーンで 1問ずつ・ゆっくり・10語でおわり',
+              '⬇️ 落ちてくる日本語から 正しいいみをタップ',
+              '⏳ 時間切れは「苦手」に入りません',
+            ] : [
+              '👈👉 左右レーンで同時に2問' + (gameMode === 'survival' ? '（3回ミスで終了）' : '（30秒）'),
+              '⬇️ 日本語訳が落ちてくる—タップで回答',
+              '🔥 はじめての人は「やさしい」から',
+            ]).map((t, i) => (
               <span key={i}>{t}</span>
             ))}
           </div>
