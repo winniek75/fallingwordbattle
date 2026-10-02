@@ -32,7 +32,7 @@ function saveCurrentPlayer(playerId) {
   localStorage.setItem('fwb_current_player', playerId);
 }
 
-export default function PlayerSelect({ onSelectPlayer, onStartGame }) {
+export default function PlayerSelect({ onSelectPlayer, onStartGame, onGuest }) {
   const [players, setPlayers] = useState([]);
   const [showNewPlayer, setShowNewPlayer] = useState(false);
   const [newPlayerName, setNewPlayerName] = useState('');
@@ -108,6 +108,25 @@ export default function PlayerSelect({ onSelectPlayer, onStartGame }) {
         プレイヤーを選ぶ
       </h1>
 
+      {/* ゲスト体験: プレイヤーを作らずにすぐ試せる入口 */}
+      <button
+        onClick={onGuest}
+        style={{
+          marginBottom: 20,
+          padding: '12px 24px',
+          background: 'rgba(255,255,255,0.95)',
+          border: 'none',
+          borderRadius: 14,
+          color: '#764ba2',
+          fontSize: 15,
+          fontWeight: 800,
+          cursor: 'pointer',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.2)'
+        }}
+      >
+        🎮 つくらずに すぐ ためす（ゲスト）
+      </button>
+
       {/* Current Player Display */}
       {currentPlayer && (
         <div style={{
@@ -124,9 +143,6 @@ export default function PlayerSelect({ onSelectPlayer, onStartGame }) {
           <div>
             <div style={{ fontSize: 18, fontWeight: 800, color: '#333' }}>
               {currentPlayer.name}
-            </div>
-            <div style={{ fontSize: 13, color: '#666' }}>
-              レベル {currentPlayer.stats.playerLevel} | {currentPlayer.stats.xp} XP
             </div>
           </div>
           <button
@@ -224,9 +240,6 @@ export default function PlayerSelect({ onSelectPlayer, onStartGame }) {
                 <div style={{ fontSize: 16, fontWeight: 700, color: '#333' }}>
                   {player.name}
                 </div>
-                <div style={{ fontSize: 12, color: '#666' }}>
-                  レベル {player.stats.playerLevel} | {player.stats.xp} XP
-                </div>
               </div>
               {player.id === currentPlayerId && (
                 <div style={{
@@ -279,6 +292,16 @@ export default function PlayerSelect({ onSelectPlayer, onStartGame }) {
           </div>
         )}
       </div>
+
+      <div style={{ marginTop: 14, fontSize: 12, color: 'rgba(255,255,255,0.75)', textAlign: 'center', lineHeight: 1.6 }}>
+        ※ XP・苦手単語などの きろくは、この端末で共通です
+      </div>
+      <a
+        href="https://wise-english-portal.vercel.app"
+        style={{ marginTop: 10, fontSize: 13, fontWeight: 700, color: 'rgba(255,255,255,0.9)', textDecoration: 'none' }}
+      >
+        🏠 学習ホームにもどる
+      </a>
 
       {/* New Player Modal */}
       {showNewPlayer && (

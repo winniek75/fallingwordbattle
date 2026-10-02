@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { speak } from '../utils/speak';
 
-export default function PreGame({ words, levelInfo, onStartFlash, onStartBattle, onBack }) {
+export default function PreGame({ words, levelInfo, gameMode, onStartFlash, onStartBattle, onBack }) {
   const [cardIdx, setCardIdx] = useState(0);
   const [flipped, setFlipped] = useState(false);
   const [allSeen, setAllSeen] = useState(false);
@@ -174,7 +174,11 @@ export default function PreGame({ words, levelInfo, onStartFlash, onStartBattle,
             <div style={{ fontWeight: 800, fontSize: 16, color: '#333' }}>
               {levelInfo.icon} {levelInfo.name} — 今回の単語
             </div>
-            <div style={{ fontSize: 12, color: '#999' }}>タップで意味を確認 · {words.length}語</div>
+            <div style={{ fontSize: 12, color: '#999' }}>
+              タップで意味を確認 · {words.length}語
+              {gameMode === 'easy' && <span style={{ color: '#22B573', fontWeight: 800 }}> · 🐢 やさしいモード（1レーン・ゆっくり）</span>}
+              {gameMode === 'survival' && <span style={{ color: '#FF8A5C', fontWeight: 800 }}> · ❤️ サバイバル</span>}
+            </div>
           </div>
         </div>
       </div>
@@ -223,7 +227,7 @@ export default function PreGame({ words, levelInfo, onStartFlash, onStartBattle,
             boxShadow: '0 4px 20px rgba(255,107,157,0.4)',
             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
           }}>
-            <span style={{ fontSize: 18 }}>⚔️</span> そのままバトルへ！
+            <span style={{ fontSize: 18 }}>{gameMode === 'easy' ? '🐢' : '⚔️'}</span> {gameMode === 'easy' ? 'ゆっくりスタート！' : 'そのままバトルへ！'}
           </button>
         </div>
       </div>

@@ -2,22 +2,19 @@ import { useState, useEffect } from 'react';
 import { LEVEL_INFO, WORD_DB } from '../data/wordData';
 import { getCurrentRank, getNextRank, getHighScore, getLevelMastery } from '../hooks/useWordStats';
 
-const RANKS = [
-  { rank: 'S', minScore: 3000, msg: '\uD83D\uDC51 \u5929\u624D\uFF01\uFF01', color: '#FFD700' },
-  { rank: 'A', minScore: 2000, msg: '\uD83C\uDF1F \u3059\u3054\u3044\uFF01', color: '#FF8A5C' },
-  { rank: 'B', minScore: 1200, msg: '\u2728 \u3044\u3044\u611F\u3058\uFF01', color: '#4ECDC4' },
-  { rank: 'C', minScore: 600, msg: '\uD83D\uDCAA \u307E\u3060\u307E\u3060\uFF01', color: '#A78BFA' },
-  { rank: 'D', minScore: 0, msg: '\uD83D\uDCDA \u304C\u3093\u3070\u308D\u3046\uFF01', color: '#9CA3AF' },
-];
+import { getGrade, PORTAL_URL } from '../utils/grade';
 
-function getRank(score) {
-  return RANKS.find(r => score >= r.minScore) || RANKS[RANKS.length - 1];
-}
-
-export default function Result({ data, levelKey, levelInfo, onRetry, onReLearn, onReFlash, onMenu, xp, rank }) {
+export default function Result({ data, levelKey, levelInfo, onRetry, onReLearn, onReFlash, onMenu, onMissReview, xp, rank }) {
   const { score, maxCombo, correctCount, wrongCount, missCount, earnedXP, isNewHighScore, gameMode, streak, streakMult, newWordsLearned } = data;
-  const gameRank = getRank(score);
-  const highScore = getHighScore(levelKey);
+  const wrongAnswers = data.wrongAnswers || [];   // 誤答（えらびまちがい）
+  const missedWords = data.missedWords || [];     // 時間切れ（とりのがし）
+  // 誤答した語（重複なし）。苦手単語に登録されるのはこちらだけ。
+  const wrongWords = [];
+  for (const w of wrongAnswers) {
+    if (!wrongWords.some(x => x.english === w.english)) wrongWords.push(w);
+  }
+  const gameRank = getGrade({ score, gameMode, correctCount, wrongCount, missCount });
+  const highScore = getHighScore(gameMode === 'easy' ? `${levelKey}_easy` : levelKey);
   const total = correctCount + wrongCount + missCount;
   const accuracy = total > 0
     ? Math.round((correctCount / total) * 100)
@@ -36,12 +33,19 @@ export default function Result({ data, levelKey, levelInfo, onRetry, onReLearn, 
   }, []);
 
   // → MoWISE portal へスコア送信 (WiseGame Bridge) — 結果表示時に1回だけ
+  // （時間切れの確認画面から戻ってきたときに二重送信しないよう data に印をつける）
   useEffect(() => {
+    if (data.reported) return;
+    data.reported = true;
     try {
       window.WiseGame && window.WiseGame.reportComplete({
         score, maxScore: Math.max(score, 100), accuracy,
         metadata: { level: levelKey, gameMode, maxCombo,
-                    correctCount, wrongCount, missCount, earnedXP, wrongAnswers: [] }
+                    correctCount, wrongCount, missCount, earnedXP,
+                    // 実際に選びまちがえた語だけを送る。時間切れ（missCount）は含めない。
+                    wrongAnswers: wrongAnswers.slice(0, 20).map(w => ({
+                      q: w.english, correct: w.correct, chosen: w.chosen, tag: 'vocabulary',
+                    })) }
       });
     } catch (e) {}
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -54,8 +58,8 @@ export default function Result({ data, levelKey, levelInfo, onRetry, onReLearn, 
 
   const stats = [
     { label: '\u2705 \u6B63\u89E3', value: correctCount + '\u554F', color: '#4ECDC4' },
-    { label: '\u274C \u4E0D\u6B63\u89E3', value: wrongCount + '\u554F', color: '#FF6B6B' },
-    { label: '\uD83D\uDCA8 \u30DF\u30B9', value: missCount + '\u554F', color: '#FFB347' },
+    { label: '\u274C \u8AA4\u7B54\uFF08\u3048\u3089\u3073\u307E\u3061\u304C\u3044\uFF09', value: wrongCount + '\u56DE', color: '#FF6B6B' },
+    { label: '\u23F3 \u6642\u9593\u5207\u308C\uFF08\u3068\u308A\u306E\u304C\u3057\uFF09', value: missCount + '\u554F', color: '#FFB347' },
     { label: '\uD83C\uDFAF \u6B63\u7B54\u7387', value: accuracy + '%', color: '#A78BFA' },
     { label: '\uD83D\uDD25 \u30B3\u30F3\u30DC', value: maxCombo + '\u9023', color: '#FF8A5C' },
   ];
@@ -64,8 +68,8 @@ export default function Result({ data, levelKey, levelInfo, onRetry, onReLearn, 
     <div style={{
       width: '100%', height: '100%',
       background: 'linear-gradient(135deg, #FFF5F7, #F5F0FF, #F0F8FF, #F0FFF4)',
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      overflow: 'hidden', position: 'relative',
+      display: 'flex',
+      overflowX: 'hidden', overflowY: 'auto', position: 'relative',
     }}>
       {/* Bubbles */}
       {[
@@ -85,15 +89,15 @@ export default function Result({ data, levelKey, levelInfo, onRetry, onReLearn, 
       {/* Main container: horizontal layout */}
       <div style={{
         position: 'relative', zIndex: 1,
-        display: 'flex', gap: 20, alignItems: 'stretch',
-        padding: '16px 24px',
+        display: 'flex', gap: 20, alignItems: 'stretch', flexWrap: 'wrap',
+        padding: '16px 24px', boxSizing: 'border-box',
         maxWidth: 900, width: '100%',
-        maxHeight: '100%',
+        margin: 'auto',
       }}>
 
         {/* LEFT: Rank + Score */}
         <div style={{
-          width: 'clamp(200px, 32%, 280px)', flexShrink: 0,
+          flex: '1 1 220px', maxWidth: 320, margin: '0 auto',
           display: 'flex', flexDirection: 'column', alignItems: 'center',
           justifyContent: 'center', gap: 12,
         }}>
@@ -105,6 +109,7 @@ export default function Result({ data, levelKey, levelInfo, onRetry, onReLearn, 
           }}>
             {levelInfo.icon} {levelInfo.name}
             {gameMode === 'survival' && <span style={{ marginLeft: 4, color: '#FF8A5C' }}>SURVIVAL</span>}
+            {gameMode === 'easy' && <span style={{ marginLeft: 4, color: '#22B573' }}>{'\u3084\u3055\u3057\u3044'}</span>}
           </div>
 
           {/* Grade */}
@@ -123,7 +128,7 @@ export default function Result({ data, levelKey, levelInfo, onRetry, onReLearn, 
           <div style={{
             background: 'white', borderRadius: 18, padding: '14px 24px',
             boxShadow: '0 4px 16px rgba(0,0,0,0.08)', textAlign: 'center',
-            width: '100%',
+            width: '100%', boxSizing: 'border-box',
           }}>
             <div style={{ fontSize: 10, color: '#bbb', fontWeight: 700, letterSpacing: 1 }}>TOTAL SCORE</div>
             <div style={{ fontFamily: 'Fredoka One', fontSize: 36, color: '#333' }}>{score.toLocaleString()}</div>
@@ -154,7 +159,7 @@ export default function Result({ data, levelKey, levelInfo, onRetry, onReLearn, 
               color: '#B8860B', fontWeight: 800, textAlign: 'center',
               border: '2px solid rgba(255,215,0,0.3)',
             }}>
-              {'\uD83D\uDD25'} {'\u3042\u3068'}{wrongCount}{'\u554F\u3067PERFECT!'}
+              {'\uD83D\uDD25'} {'\u3042\u3068'}{wrongCount + missCount}{'\u554F\u3067PERFECT!'}
             </div>
           )}
 
@@ -189,15 +194,21 @@ export default function Result({ data, levelKey, levelInfo, onRetry, onReLearn, 
               border: '2px solid #E5E7EB', background: 'white',
               fontSize: 12, fontWeight: 800, color: '#888', cursor: 'pointer',
             }}>
-              {'\uD83C\uDFE0'} {'\u30E1\u30CB\u30E5\u30FC'}
+              {'\u2630'} {'\u30E1\u30CB\u30E5\u30FC'}
             </button>
+            <a href={PORTAL_URL} style={{
+              textAlign: 'center', fontSize: 12, fontWeight: 700, color: '#999',
+              textDecoration: 'none', padding: '6px',
+            }}>
+              {'\uD83C\uDFE0'} {'\u5B66\u7FD2\u30DB\u30FC\u30E0\u306B\u3082\u3069\u308B'}
+            </a>
           </div>
         </div>
 
         {/* RIGHT: Stats + XP + Mastery */}
         {show && (
           <div style={{
-            flex: 1, minWidth: 0,
+            flex: '2 1 300px', minWidth: 0,
             display: 'flex', flexDirection: 'column', gap: 10,
             justifyContent: 'center',
             animation: 'popIn 0.4s ease',
@@ -291,14 +302,61 @@ export default function Result({ data, levelKey, levelInfo, onRetry, onReLearn, 
               </div>
             )}
 
-            {/* Weak word notice */}
-            {wrongCount > 0 && (
+            {/* 誤答: 意味を復習する */}
+            {wrongWords.length > 0 && (
               <div style={{
-                background: 'rgba(255,107,107,0.08)', borderRadius: 12,
-                padding: '8px 14px', fontSize: 12, color: '#FF6B6B',
-                fontWeight: 700, textAlign: 'center',
+                background: 'rgba(255,107,107,0.08)', borderRadius: 14,
+                padding: '10px 14px', fontSize: 12, color: '#555',
               }}>
-                {'\uD83D\uDD34'} {wrongCount}{'\u8A9E\u304C\u82E6\u624B\u5358\u8A9E\u306B\u767B\u9332\u3055\u308C\u307E\u3057\u305F'}
+                <div style={{ fontWeight: 800, color: '#FF6B6B', marginBottom: 6 }}>
+                  ❌ まちがえた単語（{wrongWords.length}語）— いみを もういちど かくにんしよう
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 6 }}>
+                  {wrongWords.map(w => (
+                    <span key={w.english} style={{
+                      background: 'white', borderRadius: 10, padding: '4px 10px', fontWeight: 700,
+                    }}>
+                      {w.english} = {w.correct}
+                    </span>
+                  ))}
+                </div>
+                <div style={{ fontSize: 11, color: '#FF6B6B', fontWeight: 700 }}>
+                  🔴 この{wrongWords.length}語を「苦手単語」に入れました
+                </div>
+              </div>
+            )}
+
+            {/* 時間切れ: 苦手には入れず、時間制限なしで再確認する */}
+            {missedWords.length > 0 && (
+              <div style={{
+                background: 'rgba(255,179,71,0.12)', borderRadius: 14,
+                padding: '10px 14px', fontSize: 12, color: '#555',
+              }}>
+                <div style={{ fontWeight: 800, color: '#E08A00', marginBottom: 6 }}>
+                  ⏳ 時間切れの単語（{missedWords.length}語）— 苦手単語には入れていません
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
+                  {missedWords.map(w => (
+                    <span key={w.english} style={{
+                      background: 'white', borderRadius: 10, padding: '4px 10px', fontWeight: 700,
+                    }}>
+                      {w.english}
+                    </span>
+                  ))}
+                </div>
+                {data.missReview ? (
+                  <div style={{ fontSize: 11, color: '#22B573', fontWeight: 800 }}>
+                    ✅ じかんせいげんなしで たしかめたよ（{data.missReview.total}語中 {data.missReview.okCount}語 せいかい）
+                  </div>
+                ) : (
+                  <button onClick={onMissReview} style={{
+                    width: '100%', padding: '10px', borderRadius: 12, border: 'none',
+                    background: 'linear-gradient(135deg, #FFB347, #FF8A5C)',
+                    color: 'white', fontSize: 13, fontWeight: 800, cursor: 'pointer',
+                  }}>
+                    ⏳ じかんせいげんなしで たしかめる
+                  </button>
+                )}
               </div>
             )}
           </div>
