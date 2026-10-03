@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import PlayerSelect from './PlayerSelect';
 import LevelSelect from './components/LevelSelect';
 import PreGame from './components/PreGame';
@@ -7,6 +7,7 @@ import Game from './components/Game';
 import Result from './components/Result';
 import MissReview from './components/MissReview';
 import { LEVEL_INFO, buildSession, buildWeakSession } from './data/wordData';
+import { buildFallingWords } from './data/sharedVocab.js';
 import { loadPlayerLevel, savePlayerLevel, loadXP, getCurrentRank, getWeakWordCount, loadStats, updateStreak } from './hooks/useWordStats';
 
 const GLOBAL_STYLES = `
@@ -103,6 +104,19 @@ export default function App() {
         }
       }
     } catch (e) {}
+
+    // ?unit=5-1 で FlashInput 共通語彙から即ゲーム開始
+    const uParam = new URLSearchParams(window.location.search).get("unit");
+    if (uParam) {
+      const uWords = buildFallingWords(uParam);
+      if (uWords && uWords.length) {
+        setSession(uWords);
+        setSelectedLevel(uParam.startsWith("4-") ? "eiken4" : "eiken5");
+        setGameMode('easy');
+        setPhase('game');
+        return;
+      }
+    }
 
     // ディープリンク: プレイヤー未作成でもゲストとしてそのまま開く
     const link = readDeepLink();
