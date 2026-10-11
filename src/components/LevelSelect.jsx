@@ -33,10 +33,17 @@ function injectResponsiveStyles() {
       .fwb-level-sub { font-size: 10px; }
     }
 
-    @media (max-width: 420px) {
-      .fwb-level-grid { grid-template-columns: 1fr; }
+    @media (max-width: 640px) {
+      html { -webkit-text-size-adjust: 100%; }
+      body { font-size: 14px; overflow-x: hidden; -webkit-overflow-scrolling: touch; }
+      .fwb-level-grid { grid-template-columns: 1fr; gap: 8px; }
       .fwb-main { padding: 12px 10px; }
       .fwb-title { font-size: 22px; }
+      .fwb-level-card { min-height: 48px; }
+      .fwb-level-name { font-size: 15px; }
+      .fwb-level-sub { font-size: 11px; }
+      button { min-height: 44px; }
+      input, textarea, select { font-size: 16px !important; }
     }
   `;
   document.head.appendChild(style);

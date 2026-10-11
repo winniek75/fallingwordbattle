@@ -24,6 +24,14 @@ const GLOBAL_STYLES = `
   @keyframes comboIn { 0%{opacity:0;transform:scale(0.6)} 60%{transform:scale(1.1)} 100%{opacity:1;transform:scale(1)} }
   @keyframes milestoneIn { 0%{opacity:0;transform:translate(-50%,-50%) scale(0)} 50%{opacity:1;transform:translate(-50%,-50%) scale(1.1)} 70%{transform:translate(-50%,-50%) scale(1)} 100%{opacity:0;transform:translate(-50%,-50%) scale(1)} }
   @keyframes perfectGlow { 0%,100%{text-shadow:0 0 20px #FFD700, 0 0 40px #FFD700, 0 0 60px #FFD700} 50%{text-shadow:0 0 30px #FFD700, 0 0 60px #FFD700, 0 0 90px #FFD700} }
+
+  /* ── Mobile optimization (<=640px) ── */
+  @media (max-width: 640px) {
+    html { -webkit-text-size-adjust: 100%; }
+    body { font-size: 14px; overflow-x: hidden; -webkit-overflow-scrolling: touch; }
+    button { min-height: 44px; }
+    input, textarea, select { font-size: 16px !important; }
+  }
 `;
 
 function injectGlobalStyles() {

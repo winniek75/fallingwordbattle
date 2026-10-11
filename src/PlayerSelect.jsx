@@ -95,14 +95,16 @@ export default function PlayerSelect({ onSelectPlayer, onStartGame, onGuest }) {
       display: 'flex',
       flexDirection: 'column',
       alignItems: 'center',
-      padding: '20px',
-      overflow: 'auto'
+      padding: '16px 12px',
+      overflow: 'auto',
+      WebkitOverflowScrolling: 'touch',
+      overflowX: 'hidden',
     }}>
       <h1 style={{
-        fontSize: 32,
+        fontSize: 'clamp(24px, 6vw, 32px)',
         fontWeight: 800,
         color: 'white',
-        marginBottom: 20,
+        marginBottom: 16,
         textShadow: '0 2px 10px rgba(0,0,0,0.2)'
       }}>
         プレイヤーを選ぶ
@@ -112,8 +114,8 @@ export default function PlayerSelect({ onSelectPlayer, onStartGame, onGuest }) {
       <button
         onClick={onGuest}
         style={{
-          marginBottom: 20,
-          padding: '12px 24px',
+          marginBottom: 16,
+          padding: '14px 24px',
           background: 'rgba(255,255,255,0.95)',
           border: 'none',
           borderRadius: 14,
@@ -121,7 +123,10 @@ export default function PlayerSelect({ onSelectPlayer, onStartGame, onGuest }) {
           fontSize: 15,
           fontWeight: 800,
           cursor: 'pointer',
-          boxShadow: '0 4px 12px rgba(0,0,0,0.2)'
+          boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
+          minHeight: 48,
+          width: '100%',
+          maxWidth: 400,
         }}
       >
         🎮 つくらずに すぐ ためす（ゲスト）
@@ -132,12 +137,16 @@ export default function PlayerSelect({ onSelectPlayer, onStartGame, onGuest }) {
         <div style={{
           background: 'rgba(255,255,255,0.95)',
           borderRadius: 20,
-          padding: '16px 24px',
-          marginBottom: 20,
+          padding: '14px 16px',
+          marginBottom: 16,
           boxShadow: '0 8px 32px rgba(0,0,0,0.1)',
           display: 'flex',
           alignItems: 'center',
-          gap: 15
+          gap: 12,
+          flexWrap: 'wrap',
+          width: '100%',
+          maxWidth: 600,
+          boxSizing: 'border-box'
         }}>
           <div style={{ fontSize: 40 }}>{currentPlayer.avatar.icon}</div>
           <div>
@@ -148,17 +157,19 @@ export default function PlayerSelect({ onSelectPlayer, onStartGame, onGuest }) {
           <button
             onClick={() => onStartGame(currentPlayer)}
             style={{
-              marginLeft: 20,
-              padding: '12px 24px',
+              marginLeft: 'auto',
+              padding: '12px 20px',
               background: `linear-gradient(135deg, ${currentPlayer.avatar.color}, ${currentPlayer.avatar.color}dd)`,
               border: 'none',
               borderRadius: 12,
               color: 'white',
-              fontSize: 16,
+              fontSize: 15,
               fontWeight: 700,
               cursor: 'pointer',
               boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
-              transition: 'all 0.2s'
+              transition: 'all 0.2s',
+              minHeight: 44,
+              flexShrink: 0
             }}
             onMouseEnter={e => e.target.style.transform = 'scale(1.05)'}
             onMouseLeave={e => e.target.style.transform = 'scale(1)'}
@@ -189,7 +200,7 @@ export default function PlayerSelect({ onSelectPlayer, onStartGame, onGuest }) {
           <button
             onClick={() => setShowNewPlayer(true)}
             style={{
-              padding: '10px 20px',
+              padding: '10px 16px',
               background: 'linear-gradient(135deg, #FF6B9D, #FFA07A)',
               border: 'none',
               borderRadius: 12,
@@ -197,6 +208,7 @@ export default function PlayerSelect({ onSelectPlayer, onStartGame, onGuest }) {
               fontSize: 14,
               fontWeight: 700,
               cursor: 'pointer',
+              minHeight: 44,
               boxShadow: '0 4px 12px rgba(0,0,0,0.2)'
             }}
           >
@@ -320,10 +332,13 @@ export default function PlayerSelect({ onSelectPlayer, onStartGame, onGuest }) {
           <div style={{
             background: 'white',
             borderRadius: 24,
-            padding: 30,
-            width: '90%',
+            padding: 'clamp(16px, 4vw, 30px)',
+            width: '92%',
             maxWidth: 400,
-            boxShadow: '0 20px 60px rgba(0,0,0,0.3)'
+            boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
+            maxHeight: '90vh',
+            overflowY: 'auto',
+            WebkitOverflowScrolling: 'touch'
           }}>
             <h3 style={{
               fontSize: 24,
@@ -364,7 +379,7 @@ export default function PlayerSelect({ onSelectPlayer, onStartGame, onGuest }) {
               </div>
               <div style={{
                 display: 'grid',
-                gridTemplateColumns: 'repeat(6, 1fr)',
+                gridTemplateColumns: 'repeat(auto-fill, minmax(44px, 1fr))',
                 gap: 8
               }}>
                 {PLAYER_AVATARS.map(avatar => (
@@ -380,7 +395,12 @@ export default function PlayerSelect({ onSelectPlayer, onStartGame, onGuest }) {
                       borderRadius: 12,
                       cursor: 'pointer',
                       transition: 'all 0.2s',
-                      fontSize: 24
+                      fontSize: 24,
+                      minHeight: 44,
+                      minWidth: 44,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
                     }}
                     onMouseEnter={e => {
                       if (selectedAvatar.id !== avatar.id) {
@@ -417,7 +437,8 @@ export default function PlayerSelect({ onSelectPlayer, onStartGame, onGuest }) {
                   fontSize: 16,
                   fontWeight: 700,
                   color: '#666',
-                  cursor: 'pointer'
+                  cursor: 'pointer',
+                  minHeight: 48
                 }}
               >
                 キャンセル
@@ -439,7 +460,8 @@ export default function PlayerSelect({ onSelectPlayer, onStartGame, onGuest }) {
                   cursor: newPlayerName.trim() ? 'pointer' : 'not-allowed',
                   boxShadow: newPlayerName.trim()
                     ? '0 4px 12px rgba(0,0,0,0.2)'
-                    : 'none'
+                    : 'none',
+                  minHeight: 48
                 }}
               >
                 作成
